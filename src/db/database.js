@@ -246,8 +246,12 @@ function resolveMysqlConfig(cfg) {
     process.env.DB_SSL === 'true' ||
     Boolean(parsed.sslFromUrl);
 
+  const sslCa = (process.env.DB_SSL_CA || '').replace(/\\n/g, '\n').trim();
   const ssl = useSsl
-    ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
+    ? {
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+        ...(sslCa ? { ca: sslCa } : {}),
+      }
     : undefined;
 
   return { host, port, user, password, database, ssl };
