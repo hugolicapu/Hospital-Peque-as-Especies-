@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<!--
+  =============================================================================
+  Archivo: public/admin.html
+  Propósito: Interfaz del Panel de Administrador Único del Hospital de Pequeñas
+             Especies — UNAM FES Cuautitlán (Campo 4).
+  Seguridad:
+    - Cumple Content-Security-Policy (CSP) estricta: cero scripts inline,
+      cero estilos inline y cero atributos de evento HTML (onclick, etc.).
+    - Todos los recursos (Bootstrap 5.3 y Bootstrap Icons) se sirven desde
+      el propio servidor (/vendor/*) sin dependencias externas.
+    - La lógica se divide en ES Modules bajo /js/admin/*.js.
+  =============================================================================
+-->
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Panel de Administración · Hospital de Pequeñas Especies UNAM FESC</title>
+
+    <!-- Estilos locales servidos desde el propio backend (sin CDN) -->
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="/css/admin.css" />
+  </head>
+
+  <body class="admin-body">
+    <!-- ===================================================================== -->
+    <!-- VISTA 0: CARGA INICIAL DE VERIFICACIÓN DE SESIÓN                      -->
+    <!-- ===================================================================== -->
+    <main id="viewLoading" class="admin-auth-wrapper" aria-live="polite">
+      <div class="card admin-auth-card text-center p-4 p-md-5 shadow-sm">
+        <div class="spinner-border text-unam-navy mx-auto mb-3" role="status">
+          <span class="visually-hidden">Verificando sesión...</span>
+        </div>
+        <h1 class="h5 fw-bold text-unam-navy mb-1">Verificando sesión administrativa</h1>
+        <p class="text-muted mb-0 small">
+          Hospital de Pequeñas Especies · UNAM FES Cuautitlán (Campo 4)
+        </p>
+      </div>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 1: CONFIGURACIÓN PENDIENTE (CUENTA ÚNICA NO CREADA TODAVÍA)     -->
+    <!-- ===================================================================== -->
+    <main id="viewSetupRequired" class="admin-auth-wrapper d-none">
+      <section class="card admin-auth-card shadow-sm border-0" aria-labelledby="setupTitle">
+        <div class="admin-auth-banner text-white p-4">
+          <div class="d-flex align-items-center gap-3">
+            <div class="admin-shield-icon" aria-hidden="true">
+              <i class="bi bi-shield-exclamation fs-3"></i>
+            </div>
+            <div>
+              <span class="badge badge-unam-gold mb-1">Configuración inicial requerida</span>
+              <h1 id="setupTitle" class="h4 mb-0 fw-bold">Cuenta de administrador no configurada</h1>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body p-4 p-md-5">
+          <p class="mb-3">
+            Por seguridad, este sistema admite <strong>una sola cuenta de administrador</strong> y no
+            permite registros desde el navegador. Antes de iniciar sesión por primera vez, el
+            responsable técnico debe crear la cuenta desde la consola del servidor.
+          </p>
+
+          <div class="setup-command-box p-3 rounded-3 mb-4">
+            <div class="small text-uppercase fw-semibold text-muted mb-2">
+              Ejecuta este comando en la carpeta del proyecto:
+            </div>
+            <pre class="mb-0 setup-command-code"><code>npm run setup-admin</code></pre>
+          </div>
+
+          <div class="alert alert-info d-flex align-items-start gap-2 small mb-4" role="note">
+            <i class="bi bi-info-circle-fill mt-1 flex-shrink-0" aria-hidden="true"></i>
+            <div>
+              El asistente te pedirá un nombre de usuario y una contraseña robusta (mínimo 10
+              caracteres con mayúsculas, minúsculas, números y símbolos). Al terminar, pulsa
+              <strong>Verificar nuevamente</strong>.
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <a href="/" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+              Volver a citas públicas
+            </a>
+            <button type="button" id="btnRecheckSetup" class="btn btn-unam-navy">
+              <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+              Verificar nuevamente
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 2: PANTALLA DE ACCESO SEGURO (ADMINISTRADOR ÚNICO)              -->
+    <!-- ===================================================================== -->
+    <main id="viewLogin" class="admin-auth-wrapper d-none">
+      <section class="card admin-auth-card shadow-sm border-0" aria-labelledby="loginTitle">
+        <div class="admin-auth-banner text-white p-4">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="admin-shield-icon" aria-hidden="true">
+              <i class="bi bi-shield-lock-fill fs-3"></i>
+            </div>
+            <div>
+              <p class="small text-white-50 mb-0">UNAM · FES Cuautitlán (Campo 4)</p>
+              <h1 id="loginTitle" class="h4 mb-0 fw-bold">Hospital de Pequeñas Especies</h1>
+            </div>
+          </div>
+          <div class="exclusive-access-pill">
+            <i class="bi bi-person-lock me-2" aria-hidden="true"></i>
+            <span>Control exclusivo · Administrador único</span>
+          </div>
+        </div>
+
+        <div class="card-body p-4 p-md-5">
+          <!-- Aviso de sesión expirada, cierre de sesión o acceso desde otro dispositivo -->
+          <div id="loginNotice" class="alert alert-warning d-none d-flex align-items-start gap-2" role="status">
+            <i class="bi bi-clock-history mt-1 flex-shrink-0" aria-hidden="true"></i>
+            <div id="loginNoticeText"></div>
+          </div>
+
+          <!-- Alerta de error de credenciales o bloqueo temporal (HTTP 401 / 423 / 429) -->
+          <div id="loginError" class="alert alert-danger d-none d-flex align-items-start gap-2" role="alert">
+            <i class="bi bi-exclamation-octagon-fill mt-1 flex-shrink-0" aria-hidden="true"></i>
+            <div id="loginErrorText"></div>
+          </div>
+
+          <form id="loginForm" novalidate>
+            <div class="mb-3">
+              <label for="loginUsername" class="form-label fw-semibold">
+                Usuario administrador
+              </label>
+              <div class="input-group">
+                <span class="input-group-text" aria-hidden="true">
+                  <i class="bi bi-person-badge"></i>
+                </span>
+                <input
+                  type="text"
+                  id="loginUsername"
+                  name="username"
+                  class="form-control"
+                  autocomplete="username"
+                  placeholder="Ingresa el usuario administrador"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label for="loginPassword" class="form-label fw-semibold">Contraseña</label>
+              <div class="input-group">
+                <span class="input-group-text" aria-hidden="true">
+                  <i class="bi bi-key-fill"></i>
+                </span>
+                <input
+                  type="password"
+                  id="loginPassword"
+                  name="password"
+                  class="form-control"
+                  autocomplete="current-password"
+                  placeholder="Ingresa tu contraseña"
+                  required
+                />
+                <button
+                  type="button"
+                  id="btnToggleLoginPassword"
+                  class="btn btn-outline-secondary"
+                  aria-label="Mostrar u ocultar contraseña"
+                  aria-pressed="false"
+                >
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" id="btnLoginSubmit" class="btn btn-unam-navy w-100 py-2 fw-semibold">
+              <span
+                id="btnLoginSpinner"
+                class="spinner-border spinner-border-sm me-2 d-none"
+                role="status"
+                aria-hidden="true"
+              ></span>
+              <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>
+              <span id="btnLoginLabel">Ingresar al panel administrativo</span>
+            </button>
+          </form>
+
+          <hr class="my-4" />
+
+          <div class="d-flex flex-column gap-2 small text-muted">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi bi-shield-check text-success mt-1 flex-shrink-0" aria-hidden="true"></i>
+              <span>
+                Solo se permite una sesión activa a la vez. Todos los accesos y cambios quedan
+                registrados en la bitácora de auditoría.
+              </span>
+            </div>
+            <div class="pt-1 text-center">
+              <a href="/" class="link-unam fw-semibold text-decoration-none">
+                <i class="bi bi-arrow-left-circle me-1" aria-hidden="true"></i>
+                Volver a la página pública de citas
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 3: PANEL ADMINISTRATIVO AUTENTICADO                             -->
+    <!-- ===================================================================== -->
+    <div id="viewDashboard" class="d-none">
+      <!-- Barra superior institucional y de estado de sesión -->
+      <header class="admin-topbar sticky-top no-print">
+        <div class="container-fluid px-3 px-lg-4 py-2">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-3">
+              <div class="admin-brand-mark" aria-hidden="true">
+                <i class="bi bi-hospital-fill"></i>
+              </div>
+              <div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <span class="fw-bold text-white fs-6">Hospital de Pequeñas Especies</span>
+                  <span class="badge badge-unam-gold">Administrador único</span>
+                </div>
+                <div class="small text-white-50">
+                  UNAM · FES Cuautitlán (Campo 4) · Control de Agenda y Horarios
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <!-- Indicador en vivo de sesión activa y tiempo restante por inactividad -->
+              <div
+                id="sessionTimerBadge"
+                class="session-pill"
+                role="status"
+                aria-live="polite"
+                title="Tiempo restante antes de cierre automático por inactividad"
+              >
+                <i class="bi bi-shield-check me-1" aria-hidden="true"></i>
+                <span class="d-none d-sm-inline">Sesión activa · </span>
+                <span id="sessionTimerText" class="font-monospace fw-semibold">15:00</span>
+              </div>
+
+              <span class="admin-user-pill">
+                <i class="bi bi-person-circle me-1" aria-hidden="true"></i>
+                <span id="adminUsernameDisplay">admin</span>
+              </span>
+
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-sm btn-outline-light"
+                title="Abrir la página pública de citas en una pestaña nueva"
+              >
+                <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
+                <span class="d-none d-md-inline">Ver página pública</span>
+              </a>
+
+              <button type="button" id="btnLogout" class="btn btn-sm btn-warning fw-semibold">
+                <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Aviso preventivo cuando quedan 2 minutos o menos de inactividad -->
+      <div
+        id="inactivityWarningBanner"
+        class="alert alert-warning rounded-0 border-0 border-bottom mb-0 d-none no-print"
+        role="alert"
+      >
+        <div class="container-fluid px-3 px-lg-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-hourglass-split fs-5" aria-hidden="true"></i>
+            <span id="inactivityWarningText" class="fw-semibold">
+              Tu sesión está por expirar por inactividad.
+            </span>
+          </div>
+          <button type="button" id="btnExtendSession" class="btn btn-sm btn-dark">
+            <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+            Mantener sesión activa
+          </button>
+        </div>
+      </div>
+
+      <!-- Contenido principal con navegación por pestañas -->
+      <main class="container-fluid px-3 px-lg-4 py-4">
+        <!-- Navegación principal de 3 pestañas -->
+        <ul class="nav nav-pills admin-nav-tabs mb-4 no-print" id="adminTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link active"
+              id="tabBtnAgenda"
+              data-bs-toggle="tab"
+              data-bs-target="#paneAgenda"
+              type="button"
+              role="tab"
+              aria-controls="paneAgenda"
+              aria-selected="true"
+            >
+              <i class="bi bi-calendar2-week me-2" aria-hidden="true"></i>
+              Agenda y Citas
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="tabBtnHorarios"
+              data-bs-toggle="tab"
+              data-bs-target="#paneHorarios"
+              type="button"
+              role="tab"
+              aria-controls="paneHorarios"
+              aria-selected="false"
+            >
+              <i class="bi bi-clock-history me-2" aria-hidden="true"></i>
+              Horarios, Bloqueos y Servicios
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="tabBtnSeguridad"
+              data-bs-toggle="tab"
+              data-bs-target="#paneSeguridad"
+              type="button"
+              role="tab"
+              aria-controls="paneSeguridad"
+              aria-selected="false"
+            >
+              <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>
+              Seguridad y Bitácora
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="adminTabContent">
+          <!-- =============================================================== -->
+          <!-- PESTAÑA 1: AGENDA Y CITAS                                       -->
+          <!-- =============================================================== -->
+          <section
+            class="tab-pane fade show active"
+            id="paneAgenda"
+            role="tabpanel"
+            aria-labelledby="tabBtnAgenda"
+          >
+            <!-- Encabezado exclusivo para impresión de la agenda del día -->
+            <div class="print-only-header mb-3">
+              <h1 class="h4 fw-bold mb-1">
+                Hospital de Pequeñas Especies · UNAM FES Cuautitlán (Campo 4)
+              </h1>
+              <p class="mb-0">
+                <strong>Agenda de citas:</strong> <span id="printHeaderDate"></span> ·
+                <strong>Impreso:</strong> <span id="printHeaderGenerated"></span>
+              </p>
+              <hr class="my-2" />
+            </div>
+
+            <!-- Tarjetas KPI del día seleccionado -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 no-print">
+              <div>
+                <h2 class="h5 fw-bold text-unam-navy mb-0">Agenda diaria de citas</h2>
+                <p id="kpiSubtitle" class="small text-muted mb-0">Cargando resumen del día...</p>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" id="btnRefreshAppointments" class="btn btn-outline-primary btn-sm">
+                  <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+                  Actualizar
+                </button>
+                <button type="button" id="btnPrintAgenda" class="btn btn-unam-navy btn-sm">
+                  <i class="bi bi-printer me-1" aria-hidden="true"></i>
+                  Imprimir agenda del día
+                </button>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4 no-print" aria-label="Indicadores de citas">
+              <div class="col-6 col-md-4 col-xl">
+                <div class="card kpi-card kpi-total h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="kpi-label">Total</span>
+                      <i class="bi bi-calendar-check kpi-icon" aria-hidden="true"></i>
+                    </div>
+                    <div id="kpiTotal" class="kpi-value">0</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6 col-md-4 col-xl">
+                <div class="card kpi-card kpi-pendiente h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="kpi-label">Pendientes</span>
+                      <i class="bi bi-hourglass-split kpi-icon" aria-hidden="true"></i>
+                    </div>
+                    <div id="kpiPendiente" class="kpi-value">0</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6 col-md-4 col-xl">
+                <div class="card kpi-card kpi-confirmada h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="kpi-label">Confirmadas</span>
+                      <i class="bi bi-check-circle-fill kpi-icon" aria-hidden="true"></i>
+                    </div>
+                    <div id="kpiConfirmada" class="kpi-value">0</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6 col-md-6 col-xl">
+                <div class="card kpi-card kpi-atendida h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="kpi-label">Atendidas</span>
+                      <i class="bi bi-heart-pulse-fill kpi-icon" aria-hidden="true"></i>
+                    </div>
+                    <div id="kpiAtendida" class="kpi-value">0</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-xl">
+                <div class="card kpi-card kpi-cancelada h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="kpi-label">Canceladas</span>
+                      <i class="bi bi-x-circle-fill kpi-icon" aria-hidden="true"></i>
+                    </div>
+                    <div id="kpiCancelada" class="kpi-value">0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Barra de filtros de citas -->
+            <div class="card admin-panel-card mb-4 no-print">
+              <div class="card-body">
+                <div class="row g-3 align-items-end">
+                  <div class="col-12 col-md-4 col-lg-3">
+                    <label for="filterDate" class="form-label small fw-semibold mb-1">Fecha</label>
+                    <input type="date" id="filterDate" class="form-control" />
+                  </div>
+
+                  <div class="col-12 col-md-8 col-lg-3 d-flex gap-2">
+                    <button type="button" id="btnFilterToday" class="btn btn-outline-primary flex-fill">
+                      <i class="bi bi-calendar-event me-1" aria-hidden="true"></i>
+                      Hoy
+                    </button>
+                    <button type="button" id="btnFilterAllDates" class="btn btn-outline-secondary flex-fill">
+                      <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>
+                      Todas las fechas
+                    </button>
+                  </div>
+
+                  <div class="col-12 col-md-4 col-lg-2">
+                    <label for="filterStatus" class="form-label small fw-semibold mb-1">Estado</label>
+                    <select id="filterStatus" class="form-select">
+                      <option value="">Todos los estados</option>
+                      <option value="pendiente">Pendiente</option>
+                      <option value="confirmada">Confirmada</option>
+                      <option value="atendida">Atendida</option>
+                      <option value="cancelada">Cancelada</option>
+                    </select>
+                  </div>
+
+                  <div class="col-12 col-md-8 col-lg-4">
+                    <label for="filterSearch" class="form-label small fw-semibold mb-1">
+                      Buscar por folio, tutor o mascota
+                    </label>
+                    <div class="input-group">
+                      <span class="input-group-text" aria-hidden="true">
+                        <i class="bi bi-search"></i>
+                      </span>
+                      <input
+                        type="search"
+                        id="filterSearch"
+                        class="form-control"
+                        placeholder="Ej. FESC-..., María, Max..."
+                      />
+                      <button
+                        type="button"
+                        id="btnClearSearch"
+                        class="btn btn-outline-secondary d-none"
+                        aria-label="Limpiar búsqueda"
+                      >
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabla responsiva de citas -->
+            <div class="card admin-panel-card">
+              <div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
+                <span class="fw-semibold text-unam-navy">
+                  <i class="bi bi-list-ul me-1" aria-hidden="true"></i>
+                  Listado de citas
+                </span>
+                <span id="appointmentsCountLabel" class="small text-muted">0 resultados</span>
+              </div>
+
+              <div class="card-body p-0">
+                <div id="appointmentsLoading" class="text-center py-5 d-none">
+                  <div class="spinner-border text-unam-navy mb-2" role="status">
+                    <span class="visually-hidden">Cargando citas...</span>
+                  </div>
+                  <div class="small text-muted">Consultando agenda del hospital...</div>
+                </div>
+
+                <div id="appointmentsEmpty" class="text-center py-5 px-3 d-none">
+                  <i class="bi bi-calendar-x fs-1 text-muted d-block mb-2" aria-hidden="true"></i>
+                  <h3 class="h6 fw-bold mb-1">No hay citas para los filtros seleccionados</h3>
+                  <p class="small text-muted mb-0">
+                    Cambia la fecha, el estado o limpia el texto de búsqueda para ver más registros.
+                  </p>
+                </div>
+
+                <div id="appointmentsTableWrap" class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 admin-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Fecha y hora</th>
+                        <th scope="col">Folio</th>
+                        <th scope="col">Mascota y especie</th>
+                        <th scope="col">Tutor y teléfono</th>
+                        <th scope="col">Servicio</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col" class="text-end no-print">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="appointmentsTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- =============================================================== -->
+          <!-- PESTAÑA 2: HORARIOS, BLOQUEOS Y SERVICIOS                       -->
+          <!-- =============================================================== -->
+          <section
+            class="tab-pane fade"
+            id="paneHorarios"
+            role="tabpanel"
+            aria-labelledby="tabBtnHorarios"
+          >
+            <!-- Aviso de sincronización inmediata con el portal público -->
+            <div class="alert alert-primary d-flex align-items-start gap-2 mb-4" role="note">
+              <i class="bi bi-arrow-repeat fs-5 mt-1 flex-shrink-0" aria-hidden="true"></i>
+              <div>
+                <strong>Sincronización en tiempo real:</strong> cualquier cambio en horarios de
+                atención, días bloqueados o servicios activos se refleja de inmediato en la
+                <strong>página pública de citas</strong>.
+              </div>
+            </div>
+
+            <div id="scheduleLoading" class="text-center py-5 d-none">
+              <div class="spinner-border text-unam-navy mb-2" role="status">
+                <span class="visually-hidden">Cargando configuración de horarios...</span>
+              </div>
+              <div class="small text-muted">Cargando reglas de atención y catálogo...</div>
+            </div>
+
+            <!-- 1. Horario semanal de atención -->
+            <div class="card admin-panel-card mb-4">
+              <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                  <h2 class="h6 fw-bold text-unam-navy mb-0">
+                    <i class="bi bi-calendar-week me-1" aria-hidden="true"></i>
+                    Horario semanal de atención
+                  </h2>
+                  <p class="small text-muted mb-0">
+                    Configura días abiertos, horario laboral, duración de cada cita y cupos por horario.
+                  </p>
+                </div>
+              </div>
+              <div class="card-body">
+                <form id="scheduleRulesForm" novalidate>
+                  <div class="table-responsive">
+                    <table class="table align-middle admin-table mb-3">
+                      <thead>
+                        <tr>
+                          <th scope="col">Día</th>
+                          <th scope="col">Atención</th>
+                          <th scope="col">Hora inicio</th>
+                          <th scope="col">Hora fin</th>
+                          <th scope="col">Duración de cita</th>
+                          <th scope="col">Cupos por horario (1–20)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="scheduleRulesBody"></tbody>
+                    </table>
+                  </div>
+                  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span class="small text-muted">
+                      <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                      Los horarios disponibles en la página pública se recalculan automáticamente al guardar.
+                    </span>
+                    <button type="submit" id="btnSaveScheduleRules" class="btn btn-unam-navy">
+                      <i class="bi bi-save me-1" aria-hidden="true"></i>
+                      Guardar horarios
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="row g-4">
+              <!-- 2. Bloquear días u horarios específicos -->
+              <div class="col-12 col-xl-7">
+                <div class="card admin-panel-card h-100">
+                  <div class="card-header bg-white py-3">
+                    <h2 class="h6 fw-bold text-unam-navy mb-0">
+                      <i class="bi bi-calendar-x me-1" aria-hidden="true"></i>
+                      Bloquear días u horarios específicos
+                    </h2>
+                    <p class="small text-muted mb-0">
+                      Usa esta sección para días festivos, jornadas académicas o mantenimiento.
+                    </p>
+                  </div>
+                  <div class="card-body">
+                    <form id="blockForm" class="bg-light rounded-3 p-3 mb-4 border" novalidate>
+                      <div class="row g-3">
+                        <div class="col-12 col-md-5">
+                          <label for="blockDate" class="form-label small fw-semibold mb-1">
+                            Fecha a bloquear *
+                          </label>
+                          <input type="date" id="blockDate" class="form-control" required />
+                        </div>
+
+                        <div class="col-12 col-md-7">
+                          <span class="form-label small fw-semibold d-block mb-1">Alcance del bloqueo</span>
+                          <div class="d-flex flex-wrap gap-3 pt-1">
+                            <div class="form-check">
+                              <input
+                                class="form-check-input"
+                                type="radio"
+                                name="blockScope"
+                                id="blockScopeFull"
+                                value="full"
+                                checked
+                              />
+                              <label class="form-check-label small" for="blockScopeFull">
+                                Todo el día
+                              </label>
+                            </div>
+                            <div class="form-check">
+                              <input
+                                class="form-check-input"
+                                type="radio"
+                                name="blockScope"
+                                id="blockScopeTime"
+                                value="time"
+                              />
+                              <label class="form-check-label small" for="blockScopeTime">
+                                Horario específico (HH:MM)
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div id="blockTimeGroup" class="col-12 col-md-4 d-none">
+                          <label for="blockTime" class="form-label small fw-semibold mb-1">
+                            Hora específica *
+                          </label>
+                          <input type="time" id="blockTime" class="form-control" />
+                        </div>
+
+                        <div class="col-12 col-md">
+                          <label for="blockReason" class="form-label small fw-semibold mb-1">
+                            Motivo del bloqueo *
+                          </label>
+                          <input
+                            type="text"
+                            id="blockReason"
+                            class="form-control"
+                            maxlength="200"
+                            placeholder="Ej. Día inhábil UNAM, mantenimiento de consultorios..."
+                            required
+                          />
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-end">
+                          <button type="submit" id="btnAddBlock" class="btn btn-danger btn-sm px-3">
+                            <i class="bi bi-slash-circle me-1" aria-hidden="true"></i>
+                            Registrar bloqueo
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+
+                    <h3 class="small text-uppercase fw-bold text-muted mb-2">Bloqueos vigentes</h3>
+
+                    <div id="blocksEmpty" class="text-center py-4 text-muted small d-none">
+                      <i class="bi bi-check2-circle fs-4 d-block mb-1 text-success" aria-hidden="true"></i>
+                      No hay días ni horarios bloqueados actualmente.
+                    </div>
+
+                    <div id="blocksTableWrap" class="table-responsive">
+                      <table class="table table-sm align-middle mb-0 admin-table">
+                        <thead>
+                          <tr>
+                            <th scope="col">Fecha</th>
+                            <th scope="col">Alcance</th>
+                            <th scope="col">Motivo</th>
+                            <th scope="col" class="text-end">Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody id="blocksListBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Catálogo de servicios -->
+              <div class="col-12 col-xl-5">
+                <div class="card admin-panel-card h-100">
+                  <div class="card-header bg-white py-3">
+                    <h2 class="h6 fw-bold text-unam-navy mb-0">
+                      <i class="bi bi-clipboard2-pulse me-1" aria-hidden="true"></i>
+                      Catálogo de servicios
+                    </h2>
+                    <p class="small text-muted mb-0">
+                      Activa o pausa los servicios visibles para los tutores al agendar cita.
+                    </p>
+                  </div>
+                  <div class="card-body">
+                    <div id="servicesEmpty" class="text-center py-4 text-muted small d-none">
+                      No hay servicios registrados en el catálogo.
+                    </div>
+                    <div id="servicesList" class="d-flex flex-column gap-3"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- =============================================================== -->
+          <!-- PESTAÑA 3: SEGURIDAD Y BITÁCORA                                 -->
+          <!-- =============================================================== -->
+          <section
+            class="tab-pane fade"
+            id="paneSeguridad"
+            role="tabpanel"
+            aria-labelledby="tabBtnSeguridad"
+          >
+            <div class="row g-4 mb-4">
+              <!-- Formulario de cambio de contraseña -->
+              <div class="col-12 col-lg-6">
+                <div class="card admin-panel-card h-100">
+                  <div class="card-header bg-white py-3">
+                    <h2 class="h6 fw-bold text-unam-navy mb-0">
+                      <i class="bi bi-key-fill me-1" aria-hidden="true"></i>
+                      Cambiar contraseña del administrador
+                    </h2>
+                    <p class="small text-muted mb-0">
+                      Actualiza periódicamente tu clave para proteger el acceso exclusivo.
+                    </p>
+                  </div>
+                  <div class="card-body">
+                    <div id="changePasswordError" class="alert alert-danger d-none small" role="alert"></div>
+
+                    <form id="changePasswordForm" novalidate>
+                      <div class="mb-3">
+                        <label for="currentPassword" class="form-label small fw-semibold">
+                          Contraseña actual
+                        </label>
+                        <div class="input-group">
+                          <input
+                            type="password"
+                            id="currentPassword"
+                            class="form-control"
+                            autocomplete="current-password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            id="btnToggleCurrentPassword"
+                            class="btn btn-outline-secondary"
+                            aria-label="Mostrar u ocultar contraseña actual"
+                            aria-pressed="false"
+                          >
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="newPassword" class="form-label small fw-semibold">
+                          Nueva contraseña
+                        </label>
+                        <div class="input-group">
+                          <input
+                            type="password"
+                            id="newPassword"
+                            class="form-control"
+                            autocomplete="new-password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            id="btnToggleNewPassword"
+                            class="btn btn-outline-secondary"
+                            aria-label="Mostrar u ocultar nueva contraseña"
+                            aria-pressed="false"
+                          >
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="confirmNewPassword" class="form-label small fw-semibold">
+                          Confirmar nueva contraseña
+                        </label>
+                        <div class="input-group">
+                          <input
+                            type="password"
+                            id="confirmNewPassword"
+                            class="form-control"
+                            autocomplete="new-password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            id="btnToggleConfirmPassword"
+                            class="btn btn-outline-secondary"
+                            aria-label="Mostrar u ocultar confirmación de contraseña"
+                            aria-pressed="false"
+                          >
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Lista visible de requisitos de contraseña -->
+                      <div class="password-rules-box rounded-3 p-3 mb-3">
+                        <div class="small fw-semibold text-unam-navy mb-2">
+                          Requisitos obligatorios de la nueva contraseña:
+                        </div>
+                        <ul class="list-unstyled small mb-0 d-flex flex-column gap-1">
+                          <li id="reqLength" class="password-rule-item">
+                            <i class="bi bi-circle me-2" aria-hidden="true"></i>
+                            Mínimo 10 caracteres
+                          </li>
+                          <li id="reqUpper" class="password-rule-item">
+                            <i class="bi bi-circle me-2" aria-hidden="true"></i>
+                            Al menos una letra mayúscula (A–Z)
+                          </li>
+                          <li id="reqLower" class="password-rule-item">
+                            <i class="bi bi-circle me-2" aria-hidden="true"></i>
+                            Al menos una letra minúscula (a–z)
+                          </li>
+                          <li id="reqNumber" class="password-rule-item">
+                            <i class="bi bi-circle me-2" aria-hidden="true"></i>
+                            Al menos un número (0–9)
+                          </li>
+                          <li id="reqSymbol" class="password-rule-item">
+                            <i class="bi bi-circle me-2" aria-hidden="true"></i>
+                            Al menos un símbolo especial (ej. !@#$%&amp;*)
+                          </li>
+                          <li id="reqMatch" class="password-rule-item">
+                            <i class="bi bi-circle me-2" aria-hidden="true"></i>
+                            La confirmación coincide con la nueva contraseña
+                          </li>
+                        </ul>
+                      </div>
+
+                      <button type="submit" id="btnChangePasswordSubmit" class="btn btn-unam-navy">
+                        <i class="bi bi-shield-check me-1" aria-hidden="true"></i>
+                        Actualizar contraseña
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resumen de protecciones activas -->
+              <div class="col-12 col-lg-6">
+                <div class="card admin-panel-card h-100">
+                  <div class="card-header bg-white py-3">
+                    <h2 class="h6 fw-bold text-unam-navy mb-0">
+                      <i class="bi bi-shield-fill-check me-1" aria-hidden="true"></i>
+                      Resumen de protecciones activas
+                    </h2>
+                    <p class="small text-muted mb-0">
+                      Controles de seguridad implementados en el servidor y navegador.
+                    </p>
+                  </div>
+                  <div class="card-body">
+                    <ul class="list-group list-group-flush security-feature-list">
+                      <li class="list-group-item px-0 d-flex align-items-start gap-3">
+                        <span class="security-badge-icon text-success" aria-hidden="true">
+                          <i class="bi bi-person-fill-lock fs-5"></i>
+                        </span>
+                        <div>
+                          <div class="fw-semibold">Sesión única exclusiva (Single-Admin)</div>
+                          <p class="small text-muted mb-0">
+                            Solo existe una cuenta de administrador en base de datos y una sola
+                            sesión activa permitida. Un nuevo inicio de sesión cierra la sesión previa.
+                          </p>
+                        </div>
+                      </li>
+
+                      <li class="list-group-item px-0 d-flex align-items-start gap-3">
+                        <span class="security-badge-icon text-success" aria-hidden="true">
+                          <i class="bi bi-lock-fill fs-5"></i>
+                        </span>
+                        <div>
+                          <div class="fw-semibold">Cifrado criptográfico bcrypt</div>
+                          <p class="small text-muted mb-0">
+                            Las credenciales nunca se almacenan en texto plano; se protegen con
+                            hash bcrypt de 12 rondas de sal.
+                          </p>
+                        </div>
+                      </li>
+
+                      <li class="list-group-item px-0 d-flex align-items-start gap-3">
+                        <span class="security-badge-icon text-success" aria-hidden="true">
+                          <i class="bi bi-patch-check-fill fs-5"></i>
+                        </span>
+                        <div>
+                          <div class="fw-semibold">Protección CSRF y CSP estricta</div>
+                          <p class="small text-muted mb-0">
+                            Cada acción administrativa requiere token <code>X-CSRF-Token</code> válido
+                            y la interfaz prohíbe scripts inline y recursos externos.
+                          </p>
+                        </div>
+                      </li>
+
+                      <li class="list-group-item px-0 d-flex align-items-start gap-3">
+                        <span class="security-badge-icon text-success" aria-hidden="true">
+                          <i class="bi bi-shield-exclamation fs-5"></i>
+                        </span>
+                        <div>
+                          <div class="fw-semibold">Defensa anti-fuerza bruta</div>
+                          <p class="small text-muted mb-0">
+                            Límite de velocidad en el inicio de sesión y bloqueo temporal automático
+                            durante 15 minutos tras 5 intentos fallidos consecutivos.
+                          </p>
+                        </div>
+                      </li>
+
+                      <li class="list-group-item px-0 pb-0 d-flex align-items-start gap-3">
+                        <span class="security-badge-icon text-success" aria-hidden="true">
+                          <i class="bi bi-hourglass-top fs-5"></i>
+                        </span>
+                        <div>
+                          <div class="fw-semibold">Timeout por inactividad</div>
+                          <p class="small text-muted mb-0">
+                            Cierre automático tras
+                            <strong id="securityTimeoutLabel">15 minutos</strong> sin actividad, con
+                            aviso previo cuando restan 2 minutos.
+                          </p>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bitácora de auditoría -->
+            <div class="card admin-panel-card">
+              <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                  <h2 class="h6 fw-bold text-unam-navy mb-0">
+                    <i class="bi bi-journal-text me-1" aria-hidden="true"></i>
+                    Bitácora de auditoría (últimos 50 eventos)
+                  </h2>
+                  <p class="small text-muted mb-0">
+                    Registro cronológico de accesos, cambios en citas, horarios y seguridad.
+                  </p>
+                </div>
+                <button type="button" id="btnReloadAuditLogs" class="btn btn-outline-primary btn-sm">
+                  <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+                  Recargar bitácora
+                </button>
+              </div>
+              <div class="card-body p-0">
+                <div id="auditLogsLoading" class="text-center py-5 d-none">
+                  <div class="spinner-border text-unam-navy mb-2" role="status">
+                    <span class="visually-hidden">Cargando bitácora...</span>
+                  </div>
+                  <div class="small text-muted">Consultando registros de auditoría...</div>
+                </div>
+
+                <div id="auditLogsEmpty" class="text-center py-5 text-muted small d-none">
+                  Aún no hay eventos registrados en la bitácora.
+                </div>
+
+                <div id="auditLogsTableWrap" class="table-responsive">
+                  <table class="table table-hover table-sm align-middle mb-0 admin-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Fecha y hora</th>
+                        <th scope="col">Evento</th>
+                        <th scope="col">Actor</th>
+                        <th scope="col">IP</th>
+                        <th scope="col">Detalle</th>
+                      </tr>
+                    </thead>
+                    <tbody id="auditLogsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL: VER DETALLES / REAGENDAR CITA                                  -->
+    <!-- ===================================================================== -->
+    <div
+      class="modal fade"
+      id="appointmentDetailModal"
+      tabindex="-1"
+      aria-labelledby="appointmentDetailModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header bg-unam-navy text-white">
+            <div>
+              <h2 class="modal-title h5 fw-bold mb-0" id="appointmentDetailModalLabel">
+                Detalle y gestión de cita
+              </h2>
+              <div class="small text-white-50">
+                Folio: <span id="modalApptFolio" class="font-monospace text-white fw-semibold"></span>
+                · <span id="modalApptStatusBadge" class="badge ms-1"></span>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Cerrar"
+            ></button>
+          </div>
+
+          <div class="modal-body">
+            <!-- Datos completos del paciente y tutor (solo lectura) -->
+            <div class="row g-3 mb-4">
+              <div class="col-12 col-md-6">
+                <div class="detail-box p-3 rounded-3 h-100">
+                  <h3 class="small text-uppercase fw-bold text-unam-navy mb-2">
+                    <i class="bi bi-heart-fill me-1" aria-hidden="true"></i>
+                    Paciente
+                  </h3>
+                  <dl class="row small mb-0">
+                    <dt class="col-4 text-muted">Mascota</dt>
+                    <dd id="modalDetailPet" class="col-8 fw-semibold mb-1"></dd>
+                    <dt class="col-4 text-muted">Especie / Edad</dt>
+                    <dd id="modalDetailSpeciesAge" class="col-8 mb-1"></dd>
+                    <dt class="col-4 text-muted">Servicio</dt>
+                    <dd id="modalDetailService" class="col-8 mb-1"></dd>
+                    <dt class="col-4 text-muted">Motivo</dt>
+                    <dd id="modalDetailReason" class="col-8 mb-0"></dd>
+                  </dl>
+                </div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="detail-box p-3 rounded-3 h-100">
+                  <h3 class="small text-uppercase fw-bold text-unam-navy mb-2">
+                    <i class="bi bi-person-vcard me-1" aria-hidden="true"></i>
+                    Tutor y registro
+                  </h3>
+                  <dl class="row small mb-0">
+                    <dt class="col-4 text-muted">Tutor</dt>
+                    <dd id="modalDetailOwner" class="col-8 fw-semibold mb-1"></dd>
+                    <dt class="col-4 text-muted">Teléfono</dt>
+                    <dd id="modalDetailPhone" class="col-8 mb-1"></dd>
+                    <dt class="col-4 text-muted">Correo</dt>
+                    <dd id="modalDetailEmail" class="col-8 mb-1"></dd>
+                    <dt class="col-4 text-muted">Registrada</dt>
+                    <dd id="modalDetailCreated" class="col-8 mb-0"></dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+
+            <!-- Formulario de edición / reagendamiento -->
+            <form id="appointmentEditForm" novalidate>
+              <input type="hidden" id="editApptId" />
+
+              <div id="editApptError" class="alert alert-danger d-none small" role="alert"></div>
+
+              <h3 class="small text-uppercase fw-bold text-unam-navy mb-3">
+                <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>
+                Reagendar, actualizar estado y notas internas
+              </h3>
+
+              <div class="row g-3 mb-3">
+                <div class="col-12 col-md-4">
+                  <label for="editApptDate" class="form-label small fw-semibold">Fecha</label>
+                  <input type="date" id="editApptDate" class="form-control" required />
+                </div>
+
+                <div class="col-12 col-md-4">
+                  <label for="editApptTime" class="form-label small fw-semibold">Hora (HH:MM)</label>
+                  <input type="time" id="editApptTime" class="form-control" required />
+                </div>
+
+                <div class="col-12 col-md-4">
+                  <label for="editApptStatus" class="form-label small fw-semibold">Estado</label>
+                  <select id="editApptStatus" class="form-select" required>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="confirmada">Confirmada</option>
+                    <option value="atendida">Atendida</option>
+                    <option value="cancelada">Cancelada</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Sugerencia rápida de horarios disponibles del día seleccionado -->
+              <div class="mb-3">
+                <div id="editApptSlotsHelp" class="small text-muted mb-1">
+                  Horarios disponibles para la fecha seleccionada:
+                </div>
+                <div id="editApptSlotsList" class="d-flex flex-wrap gap-1"></div>
+              </div>
+
+              <div class="mb-2">
+                <label for="editApptNotes" class="form-label small fw-semibold">
+                  Notas internas del hospital
+                </label>
+                <textarea
+                  id="editApptNotes"
+                  class="form-control"
+                  rows="3"
+                  maxlength="500"
+                  placeholder="Observaciones internas de recepción o seguimiento médico (no visibles para el tutor)."
+                ></textarea>
+                <div class="form-text">
+                  Estas notas son privadas y únicamente las ve el administrador.
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+              Cerrar
+            </button>
+            <button type="submit" form="appointmentEditForm" id="btnSaveAppointment" class="btn btn-unam-navy">
+              <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>
+              Guardar cambios
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL: CONFIRMACIÓN ACCESIBLE DE ACCIONES CRÍTICAS                    -->
+    <!-- ===================================================================== -->
+    <div
+      class="modal fade"
+      id="confirmActionModal"
+      tabindex="-1"
+      aria-labelledby="confirmModalTitle"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 class="modal-title h6 fw-bold text-unam-navy" id="confirmModalTitle">
+              Confirmar acción
+            </h2>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Cerrar"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <p id="confirmModalMessage" class="mb-0"></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+              Cancelar
+            </button>
+            <button type="button" id="btnConfirmModalAccept" class="btn btn-danger btn-sm">
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- CONTENEDOR DE NOTIFICACIONES ACCESIBLES (BOOTSTRAP TOASTS)            -->
+    <!-- ===================================================================== -->
+    <div
+      id="toastContainer"
+      class="toast-container position-fixed bottom-0 end-0 p-3 no-print"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+
+    <!-- Scripts locales servidos desde el servidor (sin inline scripts) -->
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="/js/admin/app.js"></script>
+  </body>
+</html>

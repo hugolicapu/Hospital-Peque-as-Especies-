@@ -1,0 +1,447 @@
+/**
+ * =============================================================================
+ * Archivo: public/css/admin.css
+ * Propósito: Estilos del Panel de Administrador Único del Hospital de Pequeñas
+ *            Especies — UNAM FES Cuautitlán (Campo 4).
+ * Lineamientos:
+ *   - Paleta institucional UNAM (#002B5C azul, #C59B27 oro) con contraste AA+.
+ *   - Jerarquía visual clara para operación diaria (KPIs, tabla de citas,
+ *     horarios y controles de seguridad).
+ *   - Reglas @media print limpias para imprimir la agenda del día sin controles.
+ * =============================================================================
+ */
+
+:root {
+  --unam-navy: #002b5c;
+  --unam-navy-dark: #001f42;
+  --unam-navy-soft: #eaf1f8;
+  --unam-gold: #c59b27;
+  --unam-gold-dark: #9c7714;
+  --unam-gold-soft: #fdf7e3;
+  --admin-bg: #f4f6f9;
+  --admin-text: #1a202c;
+  --admin-border: #dce3ec;
+}
+
+/* Base del documento */
+.admin-body {
+  background-color: var(--admin-bg);
+  color: var(--admin-text);
+  min-height: 100vh;
+}
+
+/* Utilidades institucionales */
+.text-unam-navy {
+  color: var(--unam-navy);
+}
+
+.bg-unam-navy {
+  background-color: var(--unam-navy);
+}
+
+.link-unam {
+  color: var(--unam-navy);
+}
+
+.link-unam:hover,
+.link-unam:focus-visible {
+  color: var(--unam-navy-dark);
+  text-decoration: underline;
+}
+
+.btn-unam-navy {
+  background-color: var(--unam-navy);
+  border-color: var(--unam-navy);
+  color: #ffffff;
+}
+
+.btn-unam-navy:hover,
+.btn-unam-navy:focus-visible {
+  background-color: var(--unam-navy-dark);
+  border-color: var(--unam-navy-dark);
+  color: #ffffff;
+}
+
+.btn-unam-navy:disabled {
+  background-color: #4f6b8c;
+  border-color: #4f6b8c;
+  color: #ffffff;
+}
+
+.badge-unam-gold {
+  background-color: var(--unam-gold);
+  color: #161616;
+  font-weight: 700;
+}
+
+/* ========================================================================= */
+/* VISTAS DE AUTENTICACIÓN Y CONFIGURACIÓN INICIAL                           */
+/* ========================================================================= */
+
+.admin-auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: linear-gradient(155deg, #002b5c 0%, #093b75 45%, #edf2f7 45.2%, #f4f6f9 100%);
+}
+
+.admin-auth-card {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.admin-auth-banner {
+  background: linear-gradient(135deg, var(--unam-navy-dark) 0%, var(--unam-navy) 100%);
+  border-bottom: 4px solid var(--unam-gold);
+}
+
+.admin-shield-icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 0.85rem;
+  background-color: rgba(255, 255, 255, 0.14);
+  color: var(--unam-gold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.exclusive-access-pill {
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(197, 155, 39, 0.18);
+  border: 1px solid rgba(197, 155, 39, 0.55);
+  color: #fff6d6;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.setup-command-box {
+  background-color: #111827;
+  color: #f9fafb;
+  border: 1px solid #374151;
+}
+
+.setup-command-box .text-muted {
+  color: #9ca3af !important;
+}
+
+.setup-command-code {
+  color: #fde68a;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* ========================================================================= */
+/* BARRA SUPERIOR Y PESTAÑAS DEL PANEL                                       */
+/* ========================================================================= */
+
+.admin-topbar {
+  background: linear-gradient(90deg, var(--unam-navy-dark) 0%, var(--unam-navy) 100%);
+  border-bottom: 3px solid var(--unam-gold);
+  box-shadow: 0 2px 10px rgba(0, 43, 92, 0.18);
+}
+
+.admin-brand-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.65rem;
+  background-color: rgba(255, 255, 255, 0.14);
+  color: var(--unam-gold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.session-pill {
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(25, 135, 84, 0.22);
+  border: 1px solid rgba(117, 221, 165, 0.5);
+  color: #e6ffef;
+  border-radius: 999px;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.session-pill.session-warning {
+  background-color: #ffc107;
+  border-color: #ffca2c;
+  color: #161616;
+  font-weight: 700;
+}
+
+.admin-user-pill {
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.admin-nav-tabs {
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--admin-border);
+  padding-bottom: 0.75rem;
+}
+
+.admin-nav-tabs .nav-link {
+  color: var(--unam-navy);
+  background-color: #ffffff;
+  border: 1px solid var(--admin-border);
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  border-radius: 0.6rem;
+}
+
+.admin-nav-tabs .nav-link:hover {
+  background-color: var(--unam-navy-soft);
+}
+
+.admin-nav-tabs .nav-link.active {
+  background-color: var(--unam-navy);
+  border-color: var(--unam-navy);
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(0, 43, 92, 0.2);
+}
+
+/* ========================================================================= */
+/* TARJETAS KPI Y PANELES                                                    */
+/* ========================================================================= */
+
+.admin-panel-card {
+  border: 1px solid var(--admin-border);
+  border-radius: 0.85rem;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.04);
+  overflow: hidden;
+}
+
+.kpi-card {
+  border: 1px solid var(--admin-border);
+  border-left-width: 4px;
+  border-radius: 0.75rem;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+}
+
+.kpi-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #4a5568;
+}
+
+.kpi-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1.15;
+  margin-top: 0.35rem;
+  color: var(--admin-text);
+}
+
+.kpi-icon {
+  font-size: 1.25rem;
+  opacity: 0.85;
+}
+
+.kpi-total {
+  border-left-color: var(--unam-navy);
+}
+
+.kpi-total .kpi-icon {
+  color: var(--unam-navy);
+}
+
+.kpi-pendiente {
+  border-left-color: #d97706;
+}
+
+.kpi-pendiente .kpi-icon {
+  color: #d97706;
+}
+
+.kpi-confirmada {
+  border-left-color: #198754;
+}
+
+.kpi-confirmada .kpi-icon {
+  color: #198754;
+}
+
+.kpi-atendida {
+  border-left-color: #0d6efd;
+}
+
+.kpi-atendida .kpi-icon {
+  color: #0d6efd;
+}
+
+.kpi-cancelada {
+  border-left-color: #6c757d;
+}
+
+.kpi-cancelada .kpi-icon {
+  color: #6c757d;
+}
+
+/* ========================================================================= */
+/* TABLAS, HORARIOS, SERVICIOS Y SEGURIDAD                                   */
+/* ========================================================================= */
+
+.admin-table thead th {
+  background-color: #f8fafc;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--admin-border);
+  white-space: nowrap;
+}
+
+.folio-chip {
+  display: inline-block;
+  font-family: var(--bs-font-monospace);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--unam-navy);
+  background-color: var(--unam-navy-soft);
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+}
+
+.action-btn-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.detail-box {
+  background-color: #f8fafc;
+  border: 1px solid var(--admin-border);
+}
+
+.schedule-row-closed {
+  background-color: #f8f9fa;
+  opacity: 0.72;
+}
+
+.schedule-time-input {
+  min-width: 7.5rem;
+}
+
+.schedule-capacity-input {
+  max-width: 5.5rem;
+}
+
+.service-admin-card {
+  border: 1px solid var(--admin-border);
+  border-radius: 0.75rem;
+  padding: 0.9rem 1rem;
+  background-color: #ffffff;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.service-admin-card.service-inactive {
+  background-color: #f8f9fa;
+  border-style: dashed;
+  opacity: 0.82;
+}
+
+.service-icon-box {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.6rem;
+  background-color: var(--unam-navy-soft);
+  color: var(--unam-navy);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+/* Requisitos de contraseña */
+.password-rules-box {
+  background-color: #f8fafc;
+  border: 1px solid var(--admin-border);
+}
+
+.password-rule-item {
+  color: #64748b;
+  transition: color 0.15s ease;
+}
+
+.password-rule-item.rule-valid {
+  color: #157347;
+  font-weight: 600;
+}
+
+.security-badge-icon {
+  width: 2rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Sugerencias de horarios en modal de reagendamiento */
+.slot-suggestion-btn {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.55rem;
+}
+
+/* Encabezado solo visible al imprimir */
+.print-only-header {
+  display: none;
+}
+
+/* ========================================================================= */
+/* ESTILOS DE IMPRESIÓN (AGENDA DEL DÍA)                                     */
+/* ========================================================================= */
+
+@media print {
+  body.admin-body {
+    background-color: #ffffff;
+    color: #000000;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only-header {
+    display: block !important;
+  }
+
+  .admin-panel-card {
+    border: none;
+    box-shadow: none;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  .admin-table {
+    font-size: 11pt;
+  }
+
+  .badge {
+    border: 1px solid #333333;
+    color: #000000 !important;
+    background-color: transparent !important;
+  }
+}
