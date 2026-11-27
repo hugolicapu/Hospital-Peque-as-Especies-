@@ -99,8 +99,9 @@ function errorHandler(err, req, res, next) {
     });
   }
 
-  // Error no esperado: se registra en consola del servidor sin revelar stack al cliente
-  console.error('[ERROR INTERNO]', err);
+  // Error no esperado: registrar solo resumen seguro (sin cookies, contraseñas ni stack al cliente)
+  const safeMsg = err instanceof Error ? `${err.name}: ${err.message}` : 'Error desconocido';
+  console.error(`[ERROR INTERNO] ${req.method} ${req.path} -> ${safeMsg}`);
   return res.status(500).json({
     ok: false,
     error: 'Ocurrió un error interno en el servidor. Intenta nuevamente en unos momentos.',

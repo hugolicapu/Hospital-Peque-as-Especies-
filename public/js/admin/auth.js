@@ -35,6 +35,7 @@ const AUDIT_EVENT_STYLES = Object.freeze({
   LOGIN_FAILED: { label: 'Intento fallido', badgeClass: 'text-bg-danger' },
   ADMIN_ACCOUNT_LOCKED: { label: 'Cuenta bloqueada', badgeClass: 'text-bg-danger' },
   ADMIN_LOGIN_BLOCKED: { label: 'Acceso bloqueado', badgeClass: 'text-bg-danger' },
+  ADMIN_SESSION_HIJACK_SUSPECTED: { label: 'Alerta de sesión', badgeClass: 'text-bg-danger' },
   ACCOUNT_LOCKED: { label: 'Cuenta bloqueada', badgeClass: 'text-bg-danger' },
   ADMIN_LOGOUT: { label: 'Cierre de sesión', badgeClass: 'text-bg-secondary' },
   LOGOUT: { label: 'Cierre de sesión', badgeClass: 'text-bg-secondary' },

@@ -108,9 +108,14 @@ Una vez encendido, abre en tu navegador:
 | **Contraseñas cifradas (`bcryptjs`)** | Las contraseñas nunca se guardan en texto plano; se almacenan con hash `bcrypt` de 12 rondas y comparación en tiempo constante. |
 | **Anti-fuerza bruta + bloqueo temporal** | Límite de peticiones por IP (`express-rate-limit`) + bloqueo temporal de 15 minutos tras 5 intentos fallidos consecutivos. |
 | **Protección CSRF + Cookies seguras** | Cookies `HttpOnly` y `SameSite=Strict`, regeneración de sesión al hacer login (anti Session Fixation) y validación de token `X-CSRF-Token` en tiempo constante + verificación de `Origin`. |
-| **Cabeceras HTTP seguras (`Helmet`)** | Política CSP estricta (`'self'`), sin scripts inline ni recursos CDN externos; Bootstrap y sus íconos se sirven localmente. |
+| **Cabeceras HTTP seguras (`Helmet` + aislamiento)** | Política CSP estricta (`'self'`), `Referrer-Policy: no-referrer`, `Permissions-Policy` restrictiva, `X-Frame-Options: DENY`, `CORP/COOP: same-origin` y `HSTS` en producción. |
+| **Anti-caché y anti-indexación (`no-store`)** | Las rutas `/api/*` y `/admin` envían `Cache-Control: no-store` y `X-Robots-Tag: noindex, noarchive` para que equipos compartidos no almacenen datos personales ni vistas administrativas. |
+| **Anti-secuestro de sesión y purga DOM** | La sesión del administrador se vincula a la huella del navegador (`User-Agent` hash SHA-256); si una cookie se reutiliza desde otro cliente, se revoca automáticamente y se audita. Al cerrar sesión, el panel purga datos de pacientes del DOM. |
+| **Minimización de datos personales (PII)** | En consultas públicas (`/api/public/appointments/lookup`) se ocultan IDs internos y notas privadas, y se enmascaran teléfono (`******5678`) y correo (`ma***@dominio.com`). |
+| **Fetch Metadata, HPP y Prototype Pollution** | Bloquea peticiones `Sec-Fetch-Site: cross-site` (`403`), rechaza cuerpos que no sean JSON (`415`), parámetros repetidos y claves peligrosas (`__proto__`, `constructor`, `prototype`). |
 | **Prevención de SQL Injection y XSS** | Todas las consultas SQL son parametrizadas, todas las entradas se validan con `Zod` y el frontend construye el DOM con `textContent` / `createEl` sin `innerHTML`. |
-| **Bitácora de auditoría** | Registra en `audit_logs` inicios de sesión, intentos fallidos, bloqueos, cambios de contraseña y modificaciones en citas o agenda. |
+| **Sin enlace público al administrador** | La página de citas (`/`) no muestra ningún botón ni enlace hacia `/admin`; solo la persona autorizada accede escribiendo la ruta administrativa. |
+| **Bitácora de auditoría** | Registra en `audit_logs` inicios de sesión, intentos fallidos, bloqueos, alertas de sesión, cambios de contraseña y modificaciones en citas o agenda. |
 
 ---
 
@@ -184,6 +189,27 @@ Verifica automáticamente:
 3. Seguridad del administrador (`401` sin sesión, `403` sin CSRF, invalidación de sesión previa al iniciar sesión en otro navegador).
 4. Sincronización bidireccional (confirmación de cita, bloqueo y desbloqueo de horarios reflejados al instante en la página pública, y cancelación).
 5. Bloqueo temporal de la cuenta tras 5 intentos fallidos de inicio de sesión.
+
+---
+
+## Despliegue a Internet (Producción)
+
+El proyecto está preparado para subir directamente desde GitHub a plataformas en la nube (**Railway**, **Render**, **Fly.io**, **Docker** o **VPS**):
+
+- **Archivos incluidos:** `Dockerfile` (usuario no-root `node:22-alpine` + `HEALTHCHECK`), `.dockerignore`, `render.yaml` y `public/robots.txt`.
+- **Soporte de MySQL en la nube:** acepta `MYSQL_URL` / `DATABASE_URL`, variables `MYSQL*` de Railway o `DB_*` separadas, además de cifrado `DB_SSL=true`.
+- **Zona horaria fija de México:** usa `HOSPITAL_TIMEZONE=America/Mexico_City` para que los horarios nunca se desfasen en servidores UTC.
+- **Monitoreo de salud:** endpoint `GET /health` que valida conectividad real con la base de datos.
+- **Privacidad del administrador en internet:**
+  - Define **`ADMIN_PATH=/tu-ruta-secreta`** (por ejemplo `/control-fesc-9x7k`): las rutas `/admin` y `/admin.html` devolverán `404` para cualquier persona o escáner.
+  - Opcionalmente define **`ADMIN_ALLOWED_IPS`** si quieres restringir el panel a ciertas IPs (déjalo vacío para poder acceder desde tu celular).
+  - También soporta **`APP_MODE=public`** si alguna vez prefieres desplegar solo el portal público en la nube y abrir el panel solo desde tu equipo conectado a la misma BD.
+- **Variables obligatorias en producción:**
+  - `NODE_ENV=production`
+  - `TRUST_PROXY=true`
+  - `SESSION_SECRET` (mínimo 32 caracteres aleatorios)
+  - `DB_CLIENT=mysql` + `MYSQL_URL` (o `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`) y `DB_SSL=true` si el proveedor lo solicita.
+  - En el primer arranque sin consola interactiva puedes definir temporalmente `ADMIN_USERNAME` y `ADMIN_PASSWORD` para crear la cuenta única y luego borrarlos del panel.
 
 ---
 

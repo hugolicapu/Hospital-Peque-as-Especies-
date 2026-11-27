@@ -49,28 +49,64 @@ async function generateUniqueFolio(db, dateStr) {
   );
 }
 
-function mapAppointmentRow(row, { includeAdminFields = false } = {}) {
+/**
+ * Enmascara un correo electrónico para minimizar exposición de datos personales
+ * en consultas públicas (ej. `maria.lopez@correo.com` -> `ma***@correo.com`).
+ * @param {string} email
+ */
+function maskEmail(email) {
+  const clean = String(email || '').trim();
+  const atIndex = clean.indexOf('@');
+  if (atIndex <= 1) return clean ? '***' : '';
+  const visible = clean.slice(0, Math.min(2, atIndex));
+  return `${visible}***${clean.slice(atIndex)}`;
+}
+
+/**
+ * Enmascara un teléfono dejando visibles solo los últimos 4 dígitos en consultas públicas.
+ * @param {string} phone
+ */
+function maskPhone(phone) {
+  const digits = normalizePhone(phone);
+  if (digits.length <= 4) return digits;
+  return `${'*'.repeat(digits.length - 4)}${digits.slice(-4)}`;
+}
+
+/**
+ * Comparación en tiempo constante para validar coincidencia de teléfonos en consulta pública.
+ * @param {string} a
+ * @param {string} b
+ */
+function safeEqualString(a, b) {
+  const bufA = Buffer.from(String(a || ''), 'utf8');
+  const bufB = Buffer.from(String(b || ''), 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function mapAppointmentRow(row, { includeAdminFields = false, maskPii = false } = {}) {
   const mapped = {
-    id: Number(row.id),
     folio: row.folio,
     serviceId: Number(row.service_id),
     serviceName: row.service_name,
     date: row.appointment_date,
     time: String(row.appointment_time).slice(0, 5),
     ownerName: row.owner_name,
-    ownerPhone: row.owner_phone,
-    ownerEmail: row.owner_email || '',
+    ownerPhone: maskPii ? maskPhone(row.owner_phone) : row.owner_phone,
+    ownerEmail: maskPii ? maskEmail(row.owner_email) : row.owner_email || '',
     petName: row.pet_name,
     petSpecies: row.pet_species,
     petAge: row.pet_age || '',
     reasonNotes: row.reason_notes || '',
     status: row.status,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
   };
 
+  // Campos internos (id secuencial, timestamps y notas) solo visibles para el administrador
   if (includeAdminFields) {
+    mapped.id = Number(row.id);
     mapped.adminNotes = row.admin_notes || '';
+    mapped.createdAt = row.created_at;
+    mapped.updatedAt = row.updated_at;
   }
 
   return mapped;
@@ -184,14 +220,14 @@ async function lookupAppointment(db, folio, phone) {
     [cleanFolio]
   );
 
-  if (!row || normalizePhone(row.owner_phone) !== cleanPhone) {
+  if (!row || !safeEqualString(normalizePhone(row.owner_phone), cleanPhone)) {
     throw new AppError(
       'No encontramos ninguna cita que coincida con ese folio y número de teléfono. Verifica tus datos e intenta nuevamente.',
       404
     );
   }
 
-  return mapAppointmentRow(row, { includeAdminFields: false });
+  return mapAppointmentRow(row, { includeAdminFields: false, maskPii: true });
 }
 
 async function cancelPublicAppointment(db, folio, phone, ipAddress = '') {
@@ -204,7 +240,7 @@ async function cancelPublicAppointment(db, folio, phone, ipAddress = '') {
       [cleanFolio]
     );
 
-    if (!row || normalizePhone(row.owner_phone) !== cleanPhone) {
+    if (!row || !safeEqualString(normalizePhone(row.owner_phone), cleanPhone)) {
       throw new AppError(
         'No encontramos ninguna cita que coincida con ese folio y número de teléfono.',
         404
@@ -238,7 +274,7 @@ async function cancelPublicAppointment(db, folio, phone, ipAddress = '') {
     });
 
     const updated = await tx.get(`${SELECT_APPOINTMENT_BASE} WHERE a.id = ?`, [row.id]);
-    return mapAppointmentRow(updated, { includeAdminFields: false });
+    return mapAppointmentRow(updated, { includeAdminFields: false, maskPii: true });
   });
 }
 

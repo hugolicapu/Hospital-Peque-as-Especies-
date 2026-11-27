@@ -11,12 +11,41 @@ const { AppError } = require('../middleware/error.middleware');
 const { isValidDateString } = require('../validators/appointment.validator');
 const { logAuditEvent } = require('./audit.service');
 
+/**
+ * Zona horaria oficial del hospital (FES Cuautitlán, Estado de México).
+ * Evita desfases de fecha/hora cuando la aplicación se despliega en servidores
+ * en la nube configurados en UTC (Railway, Render, Fly.io, Docker, etc.).
+ */
+const HOSPITAL_TIMEZONE = process.env.HOSPITAL_TIMEZONE || 'America/Mexico_City';
+
+/**
+ * Obtiene la fecha (`AAAA-MM-DD`) y minutos transcurridos del día actual
+ * en la zona horaria oficial del hospital.
+ *
+ * @returns {{ dateStr: string, minutesOfDay: number }}
+ */
+function getHospitalNow() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: HOSPITAL_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
+
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const hours = Number.parseInt(map.hour, 10) % 24;
+  const minutes = Number.parseInt(map.minute, 10);
+  return {
+    dateStr: `${map.year}-${map.month}-${map.day}`,
+    minutesOfDay: hours * 60 + minutes,
+  };
+}
+
 function getTodayDateString() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getHospitalNow().dateStr;
 }
 
 function parseLocalDate(dateStr) {
@@ -204,8 +233,7 @@ async function getAvailabilityForDate(db, dateStr) {
     bookedMap.set(String(row.appointment_time).slice(0, 5), Number(row.booked));
   }
 
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = getHospitalNow().minutesOfDay;
   const isToday = diffDays === 0;
 
   const times = generateTimeSlots(

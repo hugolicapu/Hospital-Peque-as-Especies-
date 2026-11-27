@@ -183,11 +183,31 @@ function bootstrapAdminPanel() {
       }
     },
     onLoggedOut: () => {
-      // Cierra cualquier modal abierto si la sesión se cerró o expiró en medio de una edición
+      // Cierra cualquier modal abierto y purga datos sensibles del DOM para evitar
+      // filtración visual o residual en memoria tras cerrar o expirar la sesión.
       confirmCtrl.hide();
       if (appointmentsCtrl) {
         appointmentsCtrl.closeModals();
       }
+      const sensitiveContainers = [
+        'appointmentsTableBody',
+        'auditLogsBody',
+        'blocksListBody',
+        'scheduleRulesBody',
+        'servicesList',
+        'editApptSlotsList',
+      ];
+      for (const id of sensitiveContainers) {
+        const node = document.getElementById(id);
+        if (node) node.replaceChildren();
+      }
+      const kpiIds = ['kpiTotal', 'kpiPendiente', 'kpiConfirmada', 'kpiAtendida', 'kpiCancelada'];
+      for (const id of kpiIds) {
+        const node = document.getElementById(id);
+        if (node) node.textContent = '0';
+      }
+      const searchInput = document.getElementById('filterSearch');
+      if (searchInput) searchInput.value = '';
     },
   };
 

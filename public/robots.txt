@@ -1,0 +1,7 @@
+# Bloquea la indexación del panel administrativo y los endpoints de API en buscadores.
+User-agent: *
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /api/
+Disallow: /health
+Allow: /

@@ -1,0 +1,39 @@
+# ==============================================================================
+# Blueprint de despliegue para Render (https://render.com)
+# Conecta tu repositorio en Render -> New -> Blueprint para aplicar esta config.
+# ==============================================================================
+services:
+  - type: web
+    name: hospital-pequenas-especies-fesc
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: HOSPITAL_TIMEZONE
+        value: America/Mexico_City
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_SESSION_TIMEOUT_MINUTES
+        value: "15"
+      - key: APP_MODE
+        value: all
+      - key: ADMIN_PATH
+        sync: false
+      - key: ADMIN_ALLOWED_IPS
+        sync: false
+      - key: DB_CLIENT
+        value: mysql
+      - key: DB_SSL
+        value: "true"
+      - key: MYSQL_URL
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

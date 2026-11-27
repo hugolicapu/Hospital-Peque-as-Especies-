@@ -198,37 +198,102 @@ async function seedInitialData(db) {
 }
 
 /**
- * Inicializa conexión con MySQL / MariaDB (XAMPP), crea la base de datos y tablas si faltan.
+ * Resuelve la configuración de conexión MySQL/MariaDB soportando tanto entorno
+ * local (XAMPP) como proveedores en la nube (Railway, Render, Aiven, TiDB, etc.).
+ * Soporta `DATABASE_URL` / `MYSQL_URL`, variables estándar `DB_*` y `MYSQL*`,
+ * además de cifrado TLS/SSL (`DB_SSL=true`).
+ *
+ * @param {object} cfg
+ */
+function resolveMysqlConfig(cfg) {
+  const connectionUrl =
+    cfg.url || process.env.MYSQL_URL || process.env.DATABASE_URL || '';
+
+  let parsed = {};
+  if (connectionUrl && /^mysql2?:\/\//i.test(connectionUrl)) {
+    const urlObj = new URL(connectionUrl);
+    parsed = {
+      host: urlObj.hostname,
+      port: urlObj.port ? Number.parseInt(urlObj.port, 10) : 3306,
+      user: decodeURIComponent(urlObj.username || ''),
+      password: decodeURIComponent(urlObj.password || ''),
+      database: decodeURIComponent(urlObj.pathname.replace(/^\//, '')),
+      sslFromUrl:
+        urlObj.searchParams.get('ssl') === 'true' ||
+        urlObj.searchParams.get('ssl-mode') === 'REQUIRED',
+    };
+  }
+
+  const host = cfg.host || process.env.DB_HOST || process.env.MYSQLHOST || parsed.host || '127.0.0.1';
+  const port = Number.parseInt(
+    String(cfg.port || process.env.DB_PORT || process.env.MYSQLPORT || parsed.port || '3306'),
+    10
+  );
+  const user = cfg.user || process.env.DB_USER || process.env.MYSQLUSER || parsed.user || 'root';
+  const password =
+    cfg.password !== undefined
+      ? cfg.password
+      : (process.env.DB_PASSWORD ?? process.env.MYSQLPASSWORD ?? parsed.password ?? '');
+  const database =
+    cfg.database ||
+    process.env.DB_NAME ||
+    process.env.MYSQLDATABASE ||
+    parsed.database ||
+    'hospital_fesc_citas';
+
+  const useSsl =
+    cfg.ssl === true ||
+    process.env.DB_SSL === 'true' ||
+    Boolean(parsed.sslFromUrl);
+
+  const ssl = useSsl
+    ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
+    : undefined;
+
+  return { host, port, user, password, database, ssl };
+}
+
+/**
+ * Inicializa conexión con MySQL / MariaDB (XAMPP o nube), crea la base de datos
+ * (si el usuario tiene permisos) y aplica el esquema de tablas si faltan.
  *
  * @param {object} cfg
  */
 async function initMysqlDatabase(cfg) {
-  const host = cfg.host || process.env.DB_HOST || '127.0.0.1';
-  const port = Number.parseInt(String(cfg.port || process.env.DB_PORT || '3306'), 10);
-  const user = cfg.user || process.env.DB_USER || 'root';
-  const password =
-    cfg.password !== undefined ? cfg.password : (process.env.DB_PASSWORD ?? '');
-  const database = cfg.database || process.env.DB_NAME || 'hospital_fesc_citas';
+  const { host, port, user, password, database, ssl } = resolveMysqlConfig(cfg);
 
   // Validar nombre de base de datos para interpolarlo seguro en CREATE DATABASE
-  if (!/^[a-zA-Z0-9_]+$/.test(database)) {
+  if (!/^[a-zA-Z0-9_-]+$/.test(database)) {
     throw new Error(`Nombre de base de datos MySQL inválido: "${database}".`);
   }
 
-  // 1. Conexión inicial sin base seleccionada para asegurar que el esquema exista
-  const bootstrapConn = await mysql.createConnection({
-    host,
-    port,
-    user,
-    password,
-  });
-
+  // 1. Intentar asegurar que la base exista (en servicios gestionados como Aiven/Render
+  //    la base ya viene creada y el usuario puede no tener permiso CREATE DATABASE).
   try {
-    await bootstrapConn.query(
-      `CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-    );
-  } finally {
-    await bootstrapConn.end();
+    const bootstrapConn = await mysql.createConnection({
+      host,
+      port,
+      user,
+      password,
+      ...(ssl ? { ssl } : {}),
+    });
+
+    try {
+      await bootstrapConn.query(
+        `CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+      );
+    } finally {
+      await bootstrapConn.end();
+    }
+  } catch (err) {
+    const nonFatalCodes = new Set([
+      'ER_DBACCESS_DENIED_ERROR',
+      'ER_ACCESS_DENIED_ERROR',
+      'ER_SPECIFIC_ACCESS_DENIED_ERROR',
+    ]);
+    if (!nonFatalCodes.has(err?.code)) {
+      throw err;
+    }
   }
 
   // 2. Pool principal con sentencias preparadas y sin multipleStatements
@@ -238,6 +303,7 @@ async function initMysqlDatabase(cfg) {
     user,
     password,
     database,
+    ...(ssl ? { ssl } : {}),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,

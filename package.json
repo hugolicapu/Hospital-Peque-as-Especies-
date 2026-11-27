@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "Sistema web de citas accesible y panel de administrador único de alta seguridad para el Hospital de Pequeñas Especies UNAM FES Cuautitlán Campo 4.",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "setup-admin": "node scripts/setup-admin.js",
+    "reset-db": "node scripts/reset-db.js",
     "test": "node --test tests/*.test.js"
   },
   "keywords": [

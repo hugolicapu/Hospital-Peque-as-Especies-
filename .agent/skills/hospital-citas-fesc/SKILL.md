@@ -23,8 +23,10 @@ description: Convenciones, contratos de API, arquitectura modular, seguridad sin
 2. **Sesión exclusiva:** `admin_account.active_session_id` debe coincidir con `req.sessionID`. Iniciar sesión reemplaza la sesión previa.
 3. **Timeout por inactividad:** Verificar `req.session.lastActivity` en cada petición protegida (default 15 min).
 4. **CSRF:** Todo `POST`, `PUT`, `PATCH`, `DELETE` bajo `/api/admin/*` requiere header `X-CSRF-Token` igual a `req.session.csrfToken`.
-5. **Anti-fuerza bruta:** Rate limit en `/api/admin/login` + bloqueo temporal de cuenta tras 5 fallos por 15 minutos.
-6. **Helmet CSP:** Solo `'self'` para scripts y estilos (sin scripts inline en HTML ni CDN externos).
+5. **Anti-fuerza bruta:** Rate limit global en `/api`, estricto en `/api/admin/login` (8/15m) y consultas públicas (15/15m) + bloqueo temporal de cuenta tras 5 fallos por 15 minutos.
+6. **Helmet CSP + Anti-filtración (`security.middleware.js`):** CSP `'self'`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, `X-Frame-Options: DENY`, `Cache-Control: no-store` en `/api/*` y `/admin`, bloqueo `Sec-Fetch-Site: cross-site`, validación `Content-Type: application/json`, anti-HPP / Prototype Pollution, vinculación de sesión por hash `User-Agent`, enmascaramiento PII en consultas públicas y purga del DOM al cerrar sesión.
+7. **Sin enlace a `/admin` en `/`:** El portal público no enlaza al panel de administrador.
+8. **Limpieza de BD:** `npm run reset-db` (`scripts/reset-db.js`) limpia citas, bloqueos y bitácora conservando `admin_account`, servicios y horario oficial `10:00–18:00`.
 
 ## Accesibilidad Obligatoria (Página Pública de Citas)
 - Público objetivo: incluye **personas mayores**.

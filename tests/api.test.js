@@ -133,9 +133,24 @@ test('Suite completa de integración, sincronización y seguridad Single-Admin',
     const adminPage = await publicClient.request('/admin');
     assert.equal(adminPage.status, 200);
     assert.match(adminPage.data, /Administrador/i);
+    assert.match(adminPage.headers.get('cache-control') || '', /no-store/i);
+    assert.match(adminPage.headers.get('x-robots-tag') || '', /noindex/i);
+    assert.equal(adminPage.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(adminPage.headers.get('x-frame-options'), 'DENY');
+    assert.ok(adminPage.headers.get('permissions-policy'), 'Debe incluir Permissions-Policy');
 
     const bootstrapCss = await publicClient.request('/vendor/bootstrap/css/bootstrap.min.css');
     assert.equal(bootstrapCss.status, 200);
+
+    // Verifica endpoint de salud para nube (/health) y robots.txt bloqueando /admin
+    const health = await publicClient.request('/health');
+    assert.equal(health.status, 200);
+    assert.equal(health.data.ok, true);
+    assert.equal(health.data.database, 'connected');
+
+    const robots = await publicClient.request('/robots.txt');
+    assert.equal(robots.status, 200);
+    assert.match(robots.data, /Disallow:\s*\/admin/i);
   });
 
   await t.test('2. Flujo público: configuración, disponibilidad, reserva y consulta segura', async () => {
@@ -182,13 +197,16 @@ test('Suite completa de integración, sincronización y seguridad Single-Admin',
     );
     assert.equal(badLookup.status, 404);
 
-    // Consulta con teléfono correcto devuelve datos sin notas internas
+    // Consulta con teléfono correcto devuelve datos sin notas internas ni ID interno, con PII enmascarada
     const goodLookup = await publicClient.request(
       `/api/public/appointments/lookup?folio=${encodeURIComponent(createdFolio)}&phone=5512345678`
     );
     assert.equal(goodLookup.status, 200);
     assert.equal(goodLookup.data.data.petName, 'Canela');
     assert.equal(goodLookup.data.data.adminNotes, undefined);
+    assert.equal(goodLookup.data.data.id, undefined);
+    assert.equal(goodLookup.data.data.ownerPhone, '******5678');
+    assert.equal(goodLookup.data.data.ownerEmail, 'ma***@example.com');
   });
 
   await t.test('3. Seguridad del administrador: 401 sin sesión, 403 sin CSRF, sesión única exclusiva', async () => {
@@ -322,4 +340,70 @@ test('Suite completa de integración, sincronización y seguridad Single-Admin',
     });
     assert.ok([423, 429].includes(blocked.status), `Se esperaba 423/429 pero llegó ${blocked.status}`);
   });
+
+  await t.test('6. Defensa extrema anti-filtración: Fetch Metadata, HPP, Content-Type y robo de cookie', async () => {
+    // Bloqueo de petición cross-site por Fetch Metadata
+    const crossSite = await publicClient.request('/api/public/config', {
+      headers: { 'Sec-Fetch-Site': 'cross-site' },
+    });
+    assert.equal(crossSite.status, 403);
+
+    // Bloqueo de parámetros duplicados (HTTP Parameter Pollution)
+    const hpp = await publicClient.request('/api/public/availability?date=2026-12-01&date=2026-12-02');
+    assert.equal(hpp.status, 400);
+
+    // Bloqueo de Prototype Pollution en cuerpo JSON
+    const protoPollute = await fetch(`${baseUrl}/api/public/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{"__proto__":{"polluted":true}}',
+    });
+    assert.equal(protoPollute.status, 400);
+
+    // Rechazo de Content-Type no JSON en escritura
+    const badMime = await fetch(`${baseUrl}/api/public/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: 'payload-invalido',
+    });
+    assert.equal(badMime.status, 415);
+
+    // Simular robo de cookie de sesión de Admin B desde otro navegador (User-Agent distinto)
+    const hijackAttempt = await adminB.request('/api/admin/appointments', {
+      headers: { 'User-Agent': 'AtacanteExterno/9.9' },
+    });
+    assert.equal(hijackAttempt.status, 401, 'Debe revocar la sesión si cambia el User-Agent');
+  });
+});
+
+test('Privacidad del panel en producción: ruta secreta ADMIN_PATH y filtro opcional ADMIN_ALLOWED_IPS', async (t) => {
+  const { app, db } = await createApp({
+    dbPath: ':memory:',
+    adminPath: '/control-fesc-9x7k',
+    adminAllowedIps: ['203.0.113.10'],
+    sessionSecret: 'secreto-pruebas-ruta-privada-1234567890abcdef',
+    disableRateLimit: true,
+  });
+
+  const server = http.createServer(app);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    if (db && typeof db.close === 'function') await db.close();
+  });
+
+  // La página pública sigue disponible normalmente
+  const pubRes = await fetch(`${baseUrl}/`);
+  assert.equal(pubRes.status, 200);
+
+  // /admin y /admin.html siempre devuelven 404 cuando hay ruta privada
+  assert.equal((await fetch(`${baseUrl}/admin`)).status, 404);
+  assert.equal((await fetch(`${baseUrl}/admin.html`)).status, 404);
+
+  // Desde 127.0.0.1 (no está en adminAllowedIps), incluso la ruta secreta y /api/admin devuelven 404
+  assert.equal((await fetch(`${baseUrl}/control-fesc-9x7k`)).status, 404);
+  assert.equal((await fetch(`${baseUrl}/api/admin/session`)).status, 404);
 });

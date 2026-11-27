@@ -1,34 +1,22 @@
 /**
  * @file src/middleware/rateLimit.middleware.js
  * @description Limitadores de tasa (rate limiting) basados en `express-rate-limit`
- * para mitigar fuerza bruta en el login administrativo y abuso/spam en la
- * creación o consulta de citas públicas.
+ * para mitigar fuerza bruta, extracción masiva (scraping), enumeración de folios
+ * y saturación de la agenda pública o del panel de administrador.
  */
 
 const rateLimit = require('express-rate-limit');
 
-/**
- * Middleware sin efecto utilizado exclusivamente cuando se desactiva el
- * rate limiting en pruebas automatizadas (`disableRateLimit: true`).
- */
 function passthroughLimiter(req, res, next) {
   return next();
 }
 
-/**
- * Construye los limitadores de tasa usados por las rutas públicas y privadas.
- *
- * @param {{ disableRateLimit?: boolean }} [options]
- * @returns {{
- *   loginLimiter: import('express').RequestHandler,
- *   publicAppointmentLimiter: import('express').RequestHandler,
- *   publicLookupLimiter: import('express').RequestHandler
- * }}
- */
 function createRateLimiters({ disableRateLimit = false } = {}) {
   if (disableRateLimit) {
     return {
+      apiGlobalLimiter: passthroughLimiter,
       loginLimiter: passthroughLimiter,
+      adminMutationLimiter: passthroughLimiter,
       publicAppointmentLimiter: passthroughLimiter,
       publicLookupLimiter: passthroughLimiter,
     };
@@ -36,10 +24,23 @@ function createRateLimiters({ disableRateLimit = false } = {}) {
 
   const fifteenMinutesMs = 15 * 60 * 1000;
 
-  // Protección anti-fuerza bruta en el inicio de sesión del administrador único
+  // Tope global en toda la API contra scraping masivo o denegación de servicio ligera
+  const apiGlobalLimiter = rateLimit({
+    windowMs: fifteenMinutesMs,
+    max: 240,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      ok: false,
+      error:
+        'Se detectaron demasiadas solicitudes desde tu conexión. Espera unos minutos e intenta de nuevo.',
+    },
+  });
+
+  // Protección estricta anti-fuerza bruta en el inicio de sesión del administrador único
   const loginLimiter = rateLimit({
     windowMs: fifteenMinutesMs,
-    max: 10,
+    max: 8,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -49,10 +50,23 @@ function createRateLimiters({ disableRateLimit = false } = {}) {
     },
   });
 
+  // Límite sobre operaciones de escritura en el panel administrativo
+  const adminMutationLimiter = rateLimit({
+    windowMs: fifteenMinutesMs,
+    max: 80,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      ok: false,
+      error:
+        'Se superó el límite temporal de cambios administrativos. Espera unos minutos.',
+    },
+  });
+
   // Protección contra spam o saturación automática de la agenda pública
   const publicAppointmentLimiter = rateLimit({
     windowMs: fifteenMinutesMs,
-    max: 20,
+    max: 15,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -62,21 +76,23 @@ function createRateLimiters({ disableRateLimit = false } = {}) {
     },
   });
 
-  // Protección contra enumeración de folios en consultas o cancelaciones públicas
+  // Protección estricta contra enumeración de folios o teléfonos en consultas/cancelaciones
   const publicLookupLimiter = rateLimit({
     windowMs: fifteenMinutesMs,
-    max: 30,
+    max: 15,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
       ok: false,
       error:
-        'Has realizado demasiadas consultas en poco tiempo. Espera unos minutos antes de intentar nuevamente.',
+        'Has realizado demasiadas consultas en poco tiempo. Por seguridad, espera unos minutos antes de reintentar.',
     },
   });
 
   return {
+    apiGlobalLimiter,
     loginLimiter,
+    adminMutationLimiter,
     publicAppointmentLimiter,
     publicLookupLimiter,
   };

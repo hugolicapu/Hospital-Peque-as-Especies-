@@ -1,0 +1,18 @@
+# Archivos excluidos al construir la imagen Docker de producción
+node_modules/
+.git/
+.gitignore
+.env
+.env.local
+.env.example
+.agent/
+data/
+tests/
+README.md
+LICENSE
+render.yaml
+unamlogo.svg
+*.log
+*.db
+*.db-shm
+*.db-wal

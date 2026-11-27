@@ -28,6 +28,7 @@
   background-color: var(--admin-bg);
   color: var(--admin-text);
   min-height: 100vh;
+  overflow-x: clip;
 }
 
 /* Utilidades institucionales */
@@ -429,6 +430,127 @@
 /* Encabezado solo visible al imprimir */
 .print-only-header {
   display: none;
+}
+
+/* ========================================================================= */
+/* DISEÑO RESPONSIVO (TELÉFONOS, TABLETAS Y PANTALLAS MEDIANAS)              */
+/* ========================================================================= */
+
+.kpi-value {
+  font-size: clamp(1.35rem, 2.8vw, 1.85rem);
+}
+
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 991.98px) {
+  .admin-topbar .d-flex.justify-content-between {
+    gap: 0.75rem;
+  }
+
+  .admin-nav-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .admin-nav-tabs .nav-item {
+    flex: 0 0 auto;
+  }
+
+  .admin-nav-tabs .nav-link {
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .admin-auth-wrapper {
+    padding: 0.9rem;
+    align-items: flex-start;
+    padding-top: 1.5rem;
+  }
+
+  .admin-auth-card .card-body {
+    padding: 1.25rem !important;
+  }
+
+  .admin-auth-banner {
+    padding: 1.15rem !important;
+  }
+
+  .admin-shield-icon {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+
+  .admin-topbar .container-fluid {
+    padding-top: 0.65rem !important;
+    padding-bottom: 0.65rem !important;
+  }
+
+  .admin-brand-mark {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .session-pill,
+  .admin-user-pill {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .kpi-card .card-body {
+    padding: 0.85rem;
+  }
+
+  .kpi-label {
+    font-size: 0.74rem;
+  }
+
+  .action-btn-group {
+    justify-content: flex-start;
+  }
+
+  .action-btn-group .btn {
+    min-height: 36px;
+  }
+
+  .admin-table {
+    font-size: 0.88rem;
+  }
+
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+
+  #btnLoginSubmit,
+  #btnChangePasswordSubmit,
+  #btnSaveScheduleRules,
+  #btnAddBlock {
+    min-height: 46px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .admin-topbar .btn-sm {
+    min-height: 38px;
+    padding: 0.35rem 0.65rem;
+  }
+
+  .schedule-time-input {
+    min-width: 6.5rem;
+  }
+
+  .exclusive-access-pill {
+    font-size: 0.78rem;
+    padding: 0.3rem 0.75rem;
+  }
 }
 
 /* ========================================================================= */

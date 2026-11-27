@@ -4,22 +4,15 @@
  * para todas las operaciones que modifican estado en `/api/admin/*`.
  *
  * Mecanismo de defensa en profundidad:
- * 1. Token criptográfico aleatorio por sesión (`req.session.csrfToken`) validado
- *    en tiempo constante contra el encabezado `X-CSRF-Token`.
- * 2. Verificación del encabezado `Origin` (cuando está presente) para confirmar
- *    que la solicitud proviene del mismo host que sirve la aplicación.
+ * 1. Bloqueo por Fetch Metadata (`Sec-Fetch-Site`) cuando el navegador indica origen externo.
+ * 2. Verificación del encabezado `Origin` (o `Referer` como respaldo) contra el `Host` actual.
+ * 3. Token criptográfico aleatorio por sesión (`req.session.csrfToken`) validado
+ *    en tiempo constante (`crypto.timingSafeEqual`) contra `X-CSRF-Token`.
  */
 
 const crypto = require('node:crypto');
 const { AppError } = require('./error.middleware');
 
-/**
- * Garantiza que la sesión actual tenga un token CSRF criptográficamente seguro.
- * Si no existe aún, genera uno nuevo de 256 bits en hexadecimal.
- *
- * @param {import('express').Request} req
- * @returns {string} Token CSRF vigente en la sesión.
- */
 function ensureCsrfToken(req) {
   if (!req.session) {
     throw new AppError('No fue posible inicializar la sesión de seguridad.', 500);
@@ -30,12 +23,6 @@ function ensureCsrfToken(req) {
   return req.session.csrfToken;
 }
 
-/**
- * Genera y reemplaza el token CSRF de la sesión (se usa tras login o cambio de contraseña).
- *
- * @param {import('express').Request} req
- * @returns {string} Nuevo token CSRF.
- */
 function rotateCsrfToken(req) {
   if (!req.session) {
     throw new AppError('No fue posible rotar el token de seguridad.', 500);
@@ -44,15 +31,21 @@ function rotateCsrfToken(req) {
   return req.session.csrfToken;
 }
 
-/**
- * Middleware Express que valida el encabezado `Origin` y el token `X-CSRF-Token`
- * usando comparación en tiempo constante (`crypto.timingSafeEqual`).
- */
 function verifyCsrf(req, res, next) {
-  // 1. Verificar Origin si el navegador lo incluyó en la solicitud
+  // 1. Verificar Fetch Metadata si el navegador la envió
+  const fetchSite = String(req.get('sec-fetch-site') || '').toLowerCase();
+  if (fetchSite && fetchSite !== 'same-origin' && fetchSite !== 'none') {
+    return next(
+      new AppError('Solicitud rechazada: origen externo no autorizado.', 403)
+    );
+  }
+
+  // 2. Verificar Origin (o Referer si Origin no viene) contra Host esperado
+  const expectedHost = req.get('host');
   const originHeader = req.get('origin');
+  const refererHeader = req.get('referer');
+
   if (originHeader) {
-    const expectedHost = req.get('host');
     try {
       const parsedOrigin = new URL(originHeader);
       if (!expectedHost || parsedOrigin.host !== expectedHost) {
@@ -65,9 +58,22 @@ function verifyCsrf(req, res, next) {
         new AppError('Solicitud rechazada: encabezado de origen inválido.', 403)
       );
     }
+  } else if (refererHeader) {
+    try {
+      const parsedReferer = new URL(refererHeader);
+      if (!expectedHost || parsedReferer.host !== expectedHost) {
+        return next(
+          new AppError('Solicitud rechazada: referencia de origen no autorizada.', 403)
+        );
+      }
+    } catch {
+      return next(
+        new AppError('Solicitud rechazada: encabezado de referencia inválido.', 403)
+      );
+    }
   }
 
-  // 2. Verificar token CSRF en tiempo constante
+  // 3. Verificar token CSRF en tiempo constante
   const headerToken = req.get('x-csrf-token');
   const sessionToken = req.session?.csrfToken;
 

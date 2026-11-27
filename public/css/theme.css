@@ -76,6 +76,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: clip;
 }
 
 main {
@@ -742,7 +743,7 @@ textarea:focus-visible,
    ----------------------------------------------------------------------------- */
 .quick-dates-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(155px, 100%), 1fr));
   gap: 0.75rem;
 }
 
@@ -818,7 +819,7 @@ textarea:focus-visible,
 
 .slots-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(155px, 100%), 1fr));
   gap: 0.85rem;
 }
 
@@ -1390,8 +1391,22 @@ html.high-contrast .a11y-btn[aria-pressed="true"] {
 }
 
 /* -----------------------------------------------------------------------------
-   14. DISEÑO RESPONSIVO (TELÉFONOS Y TABLETAS)
+   14. DISEÑO RESPONSIVO (TELÉFONOS, TABLETAS Y PANTALLAS GRANDES)
+   Garantiza cero desbordamiento horizontal incluso con letra A+ / A++ en móvil.
    ----------------------------------------------------------------------------- */
+.folio-number {
+  font-size: clamp(1.35rem, 5.2vw, 2.3rem);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.header-phone-link,
+.header-address-text,
+.summary-value {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
 @media (max-width: 991.98px) {
   .mode-tabs,
   .services-grid {
@@ -1401,11 +1416,70 @@ html.high-contrast .a11y-btn[aria-pressed="true"] {
   .stepper-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .header-contact-box {
+    margin-top: 0.25rem;
+  }
 }
 
 @media (max-width: 767.98px) {
-  .step-card {
-    padding: 1.25rem;
+  .a11y-bar {
+    padding: 0.4rem 0;
+  }
+
+  .a11y-bar-inner {
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .a11y-label {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.85rem;
+  }
+
+  .a11y-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .a11y-btn {
+    min-height: 44px;
+    padding: 0.35rem 0.4rem;
+    justify-content: center;
+    font-size: 0.8rem;
+  }
+
+  .a11y-btn-text {
+    display: none;
+  }
+
+  .brand-emblem {
+    width: 62px;
+    height: 62px;
+    min-width: 62px;
+    padding: 5px;
+  }
+
+  .brand-title {
+    font-size: 1.32rem;
+  }
+
+  .brand-institution {
+    font-size: 0.8rem;
+  }
+
+  .step-card,
+  .form-section-box,
+  .lookup-form-box,
+  .date-picker-box {
+    padding: 1.1rem;
+  }
+
+  .step-title {
+    font-size: 1.3rem;
   }
 
   .summary-row {
@@ -1413,17 +1487,92 @@ html.high-contrast .a11y-btn[aria-pressed="true"] {
     gap: 0.2rem;
   }
 
+  .receipt-banner {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+
   .step-actions {
     flex-direction: column-reverse;
     align-items: stretch;
   }
 
-  .step-actions .btn {
+  .step-actions .btn,
+  .senior-modal-footer .btn {
     width: 100%;
   }
 
-  .brand-title {
+  .senior-modal-footer {
+    flex-direction: column-reverse;
+  }
+}
+
+@media (max-width: 575.98px) {
+  /* Escalado cómodo en pantallas muy estrechas (320px-575px) */
+  html {
+    font-size: 16.5px;
+  }
+
+  html.font-lg {
+    font-size: 18.5px;
+  }
+
+  html.font-xl {
+    font-size: 20.5px;
+  }
+
+  .stepper-list {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .slots-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .quick-dates-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .species-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .service-card {
+    padding: 1rem;
+    min-height: auto;
+  }
+
+  .service-icon-wrap {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
     font-size: 1.35rem;
+  }
+
+  .mode-tab-btn {
+    padding: 0.9rem 1rem;
+  }
+
+  .btn-lg-senior {
+    min-height: 52px;
+    padding: 0.7rem 1rem;
+    font-size: 0.98rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .a11y-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .slots-grid,
+  .species-grid {
+    grid-template-columns: 1fr;
   }
 }
 

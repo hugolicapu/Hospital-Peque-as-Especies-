@@ -14,6 +14,7 @@
 const express = require('express');
 const { AppError } = require('../middleware/error.middleware');
 const { requireAdminAuth } = require('../middleware/auth.middleware');
+const { hashClientFingerprint } = require('../middleware/security.middleware');
 const {
   ensureCsrfToken,
   rotateCsrfToken,
@@ -154,6 +155,7 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
         req.session.adminAuthenticated = true;
         req.session.adminUsername = result.username;
         req.session.lastActivity = Date.now();
+        req.session.uaHash = hashClientFingerprint(req);
         const csrfToken = rotateCsrfToken(req);
 
         return req.session.save((saveErr) => {
@@ -209,7 +211,7 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  router.post('/change-password', requireAuth, verifyCsrf, async (req, res, next) => {
+  router.post('/change-password', limiters.adminMutationLimiter, requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const parsed = changePasswordSchema.parse(req.body);
       await changeAdminPassword(db, {
@@ -251,7 +253,7 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  router.patch('/appointments/:id', requireAuth, verifyCsrf, async (req, res, next) => {
+  router.patch('/appointments/:id', limiters.adminMutationLimiter, requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const id = parsePositiveId(req.params.id, 'cita');
       const parsed = updateAppointmentSchema.parse(req.body);
@@ -281,7 +283,7 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  router.put('/schedule/rules', requireAuth, verifyCsrf, async (req, res, next) => {
+  router.put('/schedule/rules', limiters.adminMutationLimiter, requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const parsed = scheduleRulesSchema.parse(req.body);
       const rules = await updateScheduleRules(
@@ -300,7 +302,7 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  router.post('/schedule/blocks', requireAuth, verifyCsrf, async (req, res, next) => {
+  router.post('/schedule/blocks', limiters.adminMutationLimiter, requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const parsed = blockDateSchema.parse(req.body);
       const block = await addBlockedDate(
@@ -319,7 +321,7 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  router.delete('/schedule/blocks/:id', requireAuth, verifyCsrf, async (req, res, next) => {
+  router.delete('/schedule/blocks/:id', limiters.adminMutationLimiter, requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const id = parsePositiveId(req.params.id, 'bloqueo');
       const removed = await removeBlockedDate(
@@ -338,7 +340,7 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  router.patch('/services/:id', requireAuth, verifyCsrf, async (req, res, next) => {
+  router.patch('/services/:id', limiters.adminMutationLimiter, requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const id = parsePositiveId(req.params.id, 'servicio');
       const parsed = updateServiceSchema.parse(req.body);
