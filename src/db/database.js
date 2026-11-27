@@ -194,6 +194,49 @@ async function seedInitialData(db) {
         ]
       );
     }
+
+    // Migración automática única para bases existentes (XAMPP / TiDB Cloud) que aún
+    // tenían el horario inicial anterior (30 min / 2 cupos o 09:00-17:00):
+    // actualiza una sola vez a lunes-viernes 10:00-18:00, 60 min y 1 cita por hora,
+    // respetando cualquier ajuste posterior que haga el administrador en /admin.
+    const alreadyMigrated = await tx.get(
+      'SELECT id FROM audit_logs WHERE event_type = ? LIMIT 1',
+      ['MIGRATION_HOURLY_SINGLE_SLOT_V1']
+    );
+    const hasLegacySchedule = await tx.get(
+      "SELECT day_of_week FROM schedule_rules WHERE slot_minutes != 60 OR capacity_per_slot != 1 OR (day_of_week BETWEEN 1 AND 5 AND start_time = '09:00') LIMIT 1"
+    );
+
+    if (!alreadyMigrated && hasLegacySchedule) {
+      for (const rule of DEFAULT_SCHEDULE_RULES) {
+        await tx.run(
+          `UPDATE schedule_rules
+           SET is_open = ?, start_time = ?, end_time = ?, slot_minutes = ?, capacity_per_slot = ?
+           WHERE day_of_week = ?`,
+          [
+            rule.is_open,
+            rule.start_time,
+            rule.end_time,
+            rule.slot_minutes,
+            rule.capacity_per_slot,
+            rule.day_of_week,
+          ]
+        );
+      }
+
+      await tx.run('UPDATE services SET duration_minutes = 60 WHERE duration_minutes = 30');
+      await tx.run(
+        `INSERT INTO audit_logs (event_type, actor, ip_address, details, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          'MIGRATION_HOURLY_SINGLE_SLOT_V1',
+          'sistema',
+          '',
+          'Migración automática aplicada: horario oficial lun-vie 10:00-18:00 (1 cita por hora).',
+          new Date().toISOString(),
+        ]
+      );
+    }
   });
 }
 

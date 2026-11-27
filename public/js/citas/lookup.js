@@ -18,7 +18,7 @@ import {
   formatTime12h,
   STATUS_META,
 } from '../shared/api.js';
-import { downloadReceiptPng } from './receipt.js';
+import { populateOfficialReceipt, printOfficialReceipt } from './receipt.js';
 
 /**
  * Extrae únicamente los dígitos de un número telefónico.
@@ -233,36 +233,12 @@ export function initLookup(getHospitalConfig) {
             'button',
             {
               type: 'button',
-              className: 'btn btn-unam-confirm btn-lg-senior',
-              onClick: async (ev) => {
-                const btn = ev.currentTarget;
-                btn.disabled = true;
-                try {
-                  await downloadReceiptPng(appt, getHospitalConfig?.()?.hospital || {});
-                  showLookupAlert(
-                    '¡Comprobante guardado en formato imagen (PNG)! Revise sus Descargas.',
-                    'success'
-                  );
-                } finally {
-                  btn.disabled = false;
-                }
-              },
+              className: 'btn btn-unam-primary btn-lg-senior',
+              onClick: () => printOfficialReceipt(appt, getHospitalConfig?.()?.hospital || {}),
             },
             [
-              createEl('i', { className: 'bi bi-download me-2', 'aria-hidden': 'true' }),
-              'Guardar comprobante',
-            ]
-          ),
-          createEl(
-            'button',
-            {
-              type: 'button',
-              className: 'btn btn-unam-outline btn-lg-senior',
-              onClick: () => window.print(),
-            },
-            [
-              createEl('i', { className: 'bi bi-printer-fill me-2', 'aria-hidden': 'true' }),
-              'Imprimir / PDF',
+              createEl('i', { className: 'bi bi-file-earmark-pdf-fill me-2', 'aria-hidden': 'true' }),
+              'Guardar en PDF / Imprimir',
             ]
           ),
           createEl(
@@ -304,6 +280,7 @@ export function initLookup(getHospitalConfig) {
 
     resultContainer.replaceChildren(...children);
     resultContainer.classList.remove('d-none');
+    populateOfficialReceipt(appt, getHospitalConfig?.()?.hospital || {});
   }
 
   /**

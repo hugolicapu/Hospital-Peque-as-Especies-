@@ -665,18 +665,11 @@
             </ul>
           </div>
 
-          <!-- Aviso de confirmación al guardar la imagen del comprobante -->
-          <div id="receipt-download-feedback" class="alert-box alert-box-success d-none no-print" role="status"></div>
-
           <!-- Acciones posteriores (ocultas al imprimir) -->
           <div class="step-actions receipt-actions no-print mt-4">
-            <button type="button" id="btn-download-receipt" class="btn btn-unam-confirm btn-lg-senior">
-              <i class="bi bi-download me-2" aria-hidden="true"></i>
-              <span>Guardar comprobante (Imagen)</span>
-            </button>
             <button type="button" id="btn-print-receipt" class="btn btn-unam-primary btn-lg-senior">
-              <i class="bi bi-printer-fill me-2" aria-hidden="true"></i>
-              <span>Imprimir o guardar en PDF</span>
+              <i class="bi bi-file-earmark-pdf-fill me-2" aria-hidden="true"></i>
+              <span>Guardar en PDF / Imprimir comprobante</span>
             </button>
             <button type="button" id="btn-book-another" class="btn btn-unam-secondary btn-lg-senior">
               <i class="bi bi-calendar-plus me-2" aria-hidden="true"></i>
@@ -837,6 +830,13 @@
         </div>
       </div>
     </footer>
+
+    <!-- =======================================================================
+         HOJA OFICIAL DEDICADA PARA IMPRESIÓN / GUARDAR COMO PDF
+         Oculta en pantalla; al imprimir muestra únicamente un comprobante limpio
+         de 1 página en colores institucionales Azul, Oro y Blanco UNAM.
+         ======================================================================= -->
+    <section id="official-pdf-sheet" class="official-pdf-sheet" aria-hidden="true"></section>
 
     <!-- Bootstrap JS local y punto de entrada modular de la página pública -->
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js" defer></script>

@@ -23,8 +23,9 @@ import {
   STATUS_META,
 } from '../shared/api.js';
 import {
-  downloadReceiptPng,
   formatIssuedTimestamp,
+  populateOfficialReceipt,
+  printOfficialReceipt,
 } from './receipt.js';
 
 /** Íconos orientativos para cada tipo de pequeña especie atendida. */
@@ -158,10 +159,8 @@ export function initWizard({ announce, onRetryConfig }) {
   const receiptDetailsEl = document.getElementById('receipt-details');
   const receiptArrivalNoteEl = document.getElementById('receipt-arrival-note');
   const receiptHospitalContactEl = document.getElementById('receipt-hospital-contact');
-  const receiptDownloadFeedback = document.getElementById('receipt-download-feedback');
   const btnCopyFolio = document.getElementById('btn-copy-folio');
   const copyFolioFeedback = document.getElementById('copy-folio-feedback');
-  const btnDownloadReceipt = document.getElementById('btn-download-receipt');
   const btnPrintReceipt = document.getElementById('btn-print-receipt');
   const btnBookAnother = document.getElementById('btn-book-another');
 
@@ -994,8 +993,6 @@ export function initWizard({ announce, onRetryConfig }) {
       receiptIssuedAtEl.textContent = `Emitido: ${formatIssuedTimestamp()}`;
     }
 
-    showAlert(receiptDownloadFeedback, '');
-
     if (copyFolioFeedback) {
       copyFolioFeedback.classList.add('d-none');
       copyFolioFeedback.textContent = '';
@@ -1039,6 +1036,24 @@ export function initWizard({ announce, onRetryConfig }) {
 
     if (wizardContainer) wizardContainer.classList.add('d-none');
     if (receiptSection) receiptSection.classList.remove('d-none');
+
+    // Prepara de inmediato la hoja oficial PDF por si el usuario presiona Ctrl+P
+    populateOfficialReceipt(
+      {
+        ...appointment,
+        serviceName,
+        date: dateVal,
+        time: timeVal,
+        ownerName,
+        ownerPhone,
+        petName,
+        petSpecies,
+        petAge: appointment.petAge || state.formValues.petAge,
+        reasonNotes: appointment.reasonNotes || state.formValues.reasonNotes,
+        status: statusKey,
+      },
+      state.config?.hospital || {}
+    );
 
     const receiptHeading = document.getElementById('receipt-heading');
     if (receiptHeading) {
@@ -1213,40 +1228,26 @@ export function initWizard({ announce, onRetryConfig }) {
     });
   }
 
-  if (btnDownloadReceipt) {
-    btnDownloadReceipt.addEventListener('click', async () => {
-      if (!state.createdAppointment) return;
-      btnDownloadReceipt.disabled = true;
-      try {
-        const format = await downloadReceiptPng(
-          {
-            ...state.createdAppointment,
-            serviceName:
-              state.createdAppointment.serviceName || state.selectedService?.name || '',
-            ownerName: state.createdAppointment.ownerName || state.formValues.ownerName,
-            ownerPhone: state.createdAppointment.ownerPhone || state.formValues.ownerPhone,
-            petName: state.createdAppointment.petName || state.formValues.petName,
-            petSpecies: state.createdAppointment.petSpecies || state.formValues.petSpecies,
-            petAge: state.createdAppointment.petAge || state.formValues.petAge,
-            reasonNotes: state.createdAppointment.reasonNotes || state.formValues.reasonNotes,
-          },
-          state.config?.hospital || {}
-        );
-        const msg =
-          format === 'png'
-            ? '¡Comprobante guardado en formato imagen (PNG)! Revise su carpeta de Descargas o Galería.'
-            : '¡Comprobante guardado! Revise su carpeta de Descargas.';
-        showAlert(receiptDownloadFeedback, msg, 'success');
-        announce(msg);
-      } finally {
-        btnDownloadReceipt.disabled = false;
-      }
-    });
-  }
-
   if (btnPrintReceipt) {
     btnPrintReceipt.addEventListener('click', () => {
-      window.print();
+      if (!state.createdAppointment) {
+        window.print();
+        return;
+      }
+      printOfficialReceipt(
+        {
+          ...state.createdAppointment,
+          serviceName:
+            state.createdAppointment.serviceName || state.selectedService?.name || '',
+          ownerName: state.createdAppointment.ownerName || state.formValues.ownerName,
+          ownerPhone: state.createdAppointment.ownerPhone || state.formValues.ownerPhone,
+          petName: state.createdAppointment.petName || state.formValues.petName,
+          petSpecies: state.createdAppointment.petSpecies || state.formValues.petSpecies,
+          petAge: state.createdAppointment.petAge || state.formValues.petAge,
+          reasonNotes: state.createdAppointment.reasonNotes || state.formValues.reasonNotes,
+        },
+        state.config?.hospital || {}
+      );
     });
   }
 

@@ -88,8 +88,8 @@ Una vez encendido, abre en tu navegador:
    - **Paso 1:** Elegir qué necesita la mascota (Consulta general, Vacunación, Desparasitación, Revisión o Especialidad).
    - **Paso 2:** Elegir el día (con botones rápidos como *Hoy*, *Mañana* o el calendario) y un horario disponible en formato de 12 horas (`10:00 a. m.`) dentro del horario oficial (**lunes a viernes de 10:00 a 18:00, 1 cita por hora**).
    - **Paso 3:** Llenar los datos del dueño/tutor y de la mascota con ejemplos visibles en cada campo.
-   - **Paso 4:** Revisar el resumen y confirmar. Se genera un **comprobante oficial con folio fácil de leer** (sin caracteres confusos como `0/O` o `1/I/L`), escudo de la UNAM, botón grande para **Guardar comprobante en imagen PNG** (ideal para celular o computadora) y botón **Imprimir o guardar en PDF**.
-3. **Consultar o cancelar mi cita:** Ingresando el **folio** y el **teléfono de 10 dígitos** registrados, el tutor puede ver el estado actual de su cita (con teléfono y correo enmascarados por privacidad), **guardar su comprobante en PNG**, imprimirlo o cancelarla liberando esa hora para otro paciente.
+   - **Paso 4:** Revisar el resumen y confirmar. Se genera un **comprobante oficial en colores Azul, Oro y Blanco UNAM** con folio fácil de leer (sin caracteres confusos como `0/O` o `1/I/L`), escudo de la UNAM y botón grande para **Guardar en PDF / Imprimir comprobante** (hoja limpia de 1 sola página con nombre automático `Comprobante-Cita-FOLIO.pdf`).
+3. **Consultar o cancelar mi cita:** Ingresando el **folio** y el **teléfono de 10 dígitos** registrados, el tutor puede ver el estado actual de su cita (con teléfono y correo enmascarados por privacidad), **guardar su comprobante en PDF / imprimirlo** o cancelarla liberando esa hora para otro paciente.
 
 ### Para el Administrador Único (`/admin`)
 - **Pestaña 1 — Agenda y Citas:** Indicadores del día (Total, Pendientes, Confirmadas, Atendidas, Canceladas), filtros por fecha/estado/búsqueda, acciones rápidas (*Confirmar*, *Atendida*, *Cancelar*), modal de **Ver / Reagendar** con notas internas privadas y botón para **Imprimir agenda del día**.
