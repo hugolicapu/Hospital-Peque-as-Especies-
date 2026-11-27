@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<!--
+  =============================================================================
+  Archivo: public/index.html
+  Propósito: Página Pública de Citas del Hospital de Pequeñas Especies
+             UNAM · FES Cuautitlán (Campo 4).
+  Enfoque UX: Diseñada con prioridad en personas mayores y alta accesibilidad
+              (tipografía escalable, alto contraste UNAM, asistente en 4 pasos,
+              botones grandes y mensajes claros en español).
+  Seguridad: Cumple CSP estricta (sin scripts inline, sin estilos inline y sin
+             eventos onclick en el HTML; toda la lógica vive en ES Modules).
+  =============================================================================
+-->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Citas · Hospital de Pequeñas Especies · UNAM FES Cuautitlán</title>
+    <meta
+      name="description"
+      content="Agende, consulte o cancele su cita veterinaria en el Hospital de Pequeñas Especies de la UNAM FES Cuautitlán (Campo 4)."
+    />
+
+    <!-- Estilos locales servidos desde el propio servidor (sin CDN externos) -->
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="/css/theme.css" />
+  </head>
+
+  <body>
+    <!-- Enlace invisible que permite a usuarios de teclado saltar al contenido -->
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+
+    <!-- Región accesible para anunciar cambios de paso o resultados a lectores de pantalla -->
+    <div id="sr-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- =======================================================================
+         BARRA SUPERIOR DE ACCESIBILIDAD (TAMAÑO DE LETRA Y ALTO CONTRASTE)
+         Se mantiene fija en la parte superior para ajuste rápido en todo momento.
+         ======================================================================= -->
+    <nav class="a11y-bar no-print" aria-label="Opciones de accesibilidad visual">
+      <div class="container a11y-bar-inner">
+        <span class="a11y-label">
+          <i class="bi bi-universal-access-circle me-2" aria-hidden="true"></i>
+          <span>Ajustar lectura:</span>
+        </span>
+
+        <div class="a11y-controls" role="group" aria-label="Tamaño de letra y contraste">
+          <button
+            type="button"
+            id="btn-font-normal"
+            class="btn a11y-btn"
+            data-font-size="normal"
+            aria-pressed="true"
+            title="Usar tamaño de letra normal"
+          >
+            <span class="fw-bold" aria-hidden="true">A-</span>
+            <span class="a11y-btn-text">Normal</span>
+          </button>
+
+          <button
+            type="button"
+            id="btn-font-large"
+            class="btn a11y-btn"
+            data-font-size="large"
+            aria-pressed="false"
+            title="Aumentar a letra grande"
+          >
+            <span class="fw-bold" aria-hidden="true">A+</span>
+            <span class="a11y-btn-text">Grande</span>
+          </button>
+
+          <button
+            type="button"
+            id="btn-font-xlarge"
+            class="btn a11y-btn"
+            data-font-size="xlarge"
+            aria-pressed="false"
+            title="Aumentar a letra extra grande"
+          >
+            <span class="fw-bold" aria-hidden="true">A++</span>
+            <span class="a11y-btn-text">Muy grande</span>
+          </button>
+
+          <button
+            type="button"
+            id="btn-high-contrast"
+            class="btn a11y-btn a11y-btn-contrast"
+            aria-pressed="false"
+            title="Activar o desactivar modo de alto contraste"
+          >
+            <i class="bi bi-circle-half me-1" aria-hidden="true"></i>
+            <span>Alto contraste</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- =======================================================================
+         ENCABEZADO INSTITUCIONAL UNAM FES CUAUTITLÁN CAMPO 4
+         Muestra el nombre del hospital, teléfono de apoyo y dirección oficial.
+         ======================================================================= -->
+    <header class="site-header">
+      <div class="container py-4">
+        <div class="row align-items-center g-3">
+          <div class="col-12 col-lg-7">
+            <div class="d-flex align-items-center gap-3">
+              <div class="brand-emblem" aria-hidden="true">
+                <i class="bi bi-hospital-fill"></i>
+              </div>
+              <div>
+                <p id="hospital-institution" class="brand-institution mb-1">
+                  UNAM · FES Cuautitlán (Campo 4)
+                </p>
+                <h1 id="hospital-name" class="brand-title mb-0">
+                  Hospital de Pequeñas Especies
+                </h1>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-5">
+            <div class="header-contact-box">
+              <div class="header-contact-row">
+                <i class="bi bi-telephone-fill text-unam-gold" aria-hidden="true"></i>
+                <div>
+                  <span class="header-contact-label">Teléfono de apoyo:</span>
+                  <a id="hospital-phone-link" href="tel:5556231999" class="header-phone-link">
+                    <span id="hospital-phone">55 5623 1999</span>
+                  </a>
+                </div>
+              </div>
+              <div class="header-contact-row mt-2">
+                <i class="bi bi-geo-alt-fill text-unam-gold" aria-hidden="true"></i>
+                <p id="hospital-address" class="mb-0 header-address-text">
+                  Km 2.5 Carretera Cuautitlán-Teoloyucan, San Sebastián Xhala, Cuautitlán Izcalli, Edo. de Méx.
+                </p>
+              </div>
+              <div id="hospital-hours-row" class="header-contact-row mt-2 d-none">
+                <i class="bi bi-clock-fill text-unam-gold" aria-hidden="true"></i>
+                <p id="hospital-hours-summary" class="mb-0 header-address-text"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- =======================================================================
+         CONTENIDO PRINCIPAL: SELECTOR DE PESTAÑAS + ASISTENTE / CONSULTA
+         ======================================================================= -->
+    <main id="main-content" class="container py-4 pb-5">
+      <!-- Selector principal grande con dos pestañas claras -->
+      <section class="mode-switcher no-print mb-4" aria-label="Acciones principales">
+        <div class="mode-tabs" role="tablist" aria-label="Elija qué desea realizar">
+          <button
+            type="button"
+            id="tab-book"
+            class="mode-tab-btn active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="panel-book"
+          >
+            <i class="bi bi-calendar-plus-fill mode-tab-icon" aria-hidden="true"></i>
+            <span class="mode-tab-content">
+              <span class="mode-tab-title">Agendar una cita nueva</span>
+              <span class="mode-tab-desc">Reserve paso a paso el día y la hora para su mascota</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            id="tab-lookup"
+            class="mode-tab-btn"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-lookup"
+          >
+            <i class="bi bi-search mode-tab-icon" aria-hidden="true"></i>
+            <span class="mode-tab-content">
+              <span class="mode-tab-title">Consultar o cancelar mi cita</span>
+              <span class="mode-tab-desc">Revise los datos de una cita con su número de folio</span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           PESTAÑA 1: ASISTENTE GUIADO EN 4 PASOS PARA AGENDAR CITA
+           ===================================================================== -->
+      <section
+        id="panel-book"
+        role="tabpanel"
+        aria-labelledby="tab-book"
+        class="main-panel"
+      >
+        <div id="wizard-container">
+          <!-- Indicador visual numerado de progreso (Paso 1 de 4 ... Paso 4 de 4) -->
+          <div id="wizard-stepper" class="stepper-card no-print mb-4" aria-label="Progreso para agendar su cita">
+            <div class="stepper-header">
+              <span id="wizard-step-counter" class="step-counter-badge">Paso 1 de 4</span>
+              <span id="wizard-step-subtitle" class="stepper-subtitle">
+                Siga los 4 pasos sencillos para apartar su horario.
+              </span>
+            </div>
+
+            <ol class="stepper-list" id="stepper-list">
+              <li class="stepper-item active" id="step-indicator-1" data-step="1" aria-current="step">
+                <button type="button" class="stepper-btn" data-go-step="1" disabled>
+                  <span class="stepper-circle" aria-hidden="true">1</span>
+                  <span class="stepper-text">Servicio</span>
+                </button>
+              </li>
+              <li class="stepper-item" id="step-indicator-2" data-step="2">
+                <button type="button" class="stepper-btn" data-go-step="2" disabled>
+                  <span class="stepper-circle" aria-hidden="true">2</span>
+                  <span class="stepper-text">Día y hora</span>
+                </button>
+              </li>
+              <li class="stepper-item" id="step-indicator-3" data-step="3">
+                <button type="button" class="stepper-btn" data-go-step="3" disabled>
+                  <span class="stepper-circle" aria-hidden="true">3</span>
+                  <span class="stepper-text">Sus datos</span>
+                </button>
+              </li>
+              <li class="stepper-item" id="step-indicator-4" data-step="4">
+                <button type="button" class="stepper-btn" data-go-step="4" disabled>
+                  <span class="stepper-circle" aria-hidden="true">4</span>
+                  <span class="stepper-text">Confirmar</span>
+                </button>
+              </li>
+            </ol>
+          </div>
+
+          <!-- -----------------------------------------------------------------
+               PASO 1: ¿QUÉ NECESITA SU MASCOTA?
+               ----------------------------------------------------------------- -->
+          <article id="wizard-step-1" class="step-card" aria-labelledby="step-1-heading">
+            <div class="step-card-header">
+              <h2 id="step-1-heading" class="step-title" tabindex="-1">
+                Paso 1: ¿Qué necesita su mascota?
+              </h2>
+              <p class="step-lead mb-0">
+                Toque o haga clic en el servicio que necesita. Después presione el botón azul de abajo para continuar.
+              </p>
+            </div>
+
+            <div id="services-alert" class="alert-box d-none" role="alert"></div>
+
+            <div id="services-loading" class="loading-box" aria-live="polite">
+              <div class="spinner-border text-unam-blue" role="status" aria-hidden="true"></div>
+              <p class="mb-0 mt-3">Cargando servicios disponibles del hospital...</p>
+            </div>
+
+            <div
+              id="services-grid"
+              class="services-grid"
+              role="group"
+              aria-label="Servicios veterinarios disponibles"
+            ></div>
+
+            <div class="step-actions step-actions-end mt-4">
+              <button type="button" id="btn-step1-next" class="btn btn-unam-primary btn-lg-senior">
+                <span>Continuar al Paso 2</span>
+                <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
+              </button>
+            </div>
+          </article>
+
+          <!-- -----------------------------------------------------------------
+               PASO 2: ELIJA EL DÍA Y LA HORA
+               ----------------------------------------------------------------- -->
+          <article id="wizard-step-2" class="step-card d-none" aria-labelledby="step-2-heading">
+            <div class="step-card-header">
+              <h2 id="step-2-heading" class="step-title" tabindex="-1">
+                Paso 2: Elija el día y la hora
+              </h2>
+              <p class="step-lead mb-0">
+                Primero elija el día que prefiere venir y luego toque uno de los horarios disponibles.
+              </p>
+            </div>
+
+            <!-- Recordatorio del servicio elegido en el Paso 1 -->
+            <div id="step2-selected-service-summary" class="context-pill mb-4"></div>
+
+            <div id="availability-alert" class="alert-box d-none" role="alert"></div>
+
+            <!-- Botones rápidos de fechas (Hoy, Mañana y próximos días abiertos) -->
+            <div class="mb-4">
+              <p class="section-sublabel mb-2">
+                <i class="bi bi-calendar-event me-2" aria-hidden="true"></i>
+                Opciones rápidas de fecha:
+              </p>
+              <div
+                id="quick-dates-container"
+                class="quick-dates-grid"
+                role="group"
+                aria-label="Fechas rápidas sugeridas"
+              ></div>
+            </div>
+
+            <!-- Selector de calendario grande -->
+            <div class="date-picker-box mb-4">
+              <label for="appointment-date-input" class="form-label senior-label">
+                O elija otra fecha en el calendario:
+              </label>
+              <div class="row g-3 align-items-center">
+                <div class="col-12 col-md-5">
+                  <input
+                    type="date"
+                    id="appointment-date-input"
+                    class="form-control senior-input"
+                  />
+                </div>
+                <div class="col-12 col-md-7">
+                  <div class="selected-date-banner">
+                    <span class="selected-date-caption">Día seleccionado:</span>
+                    <strong id="selected-date-readable" class="selected-date-value">
+                      Seleccione un día
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Horarios disponibles del día elegido -->
+            <div class="slots-section">
+              <p class="section-sublabel mb-3">
+                <i class="bi bi-clock-history me-2" aria-hidden="true"></i>
+                Horarios disponibles para ese día:
+              </p>
+
+              <div id="slots-loading" class="loading-box d-none" aria-live="polite">
+                <div class="spinner-border text-unam-blue" role="status" aria-hidden="true"></div>
+                <p class="mb-0 mt-3">Buscando horarios disponibles...</p>
+              </div>
+
+              <!-- Aviso amable cuando un día está cerrado, bloqueado o sin cupo -->
+              <div id="slots-status-message" class="notice-box d-none" role="status"></div>
+
+              <!-- Cuadrícula de botones de horarios -->
+              <div
+                id="slots-grid"
+                class="slots-grid"
+                role="group"
+                aria-label="Horarios disponibles"
+              ></div>
+            </div>
+
+            <div class="step-actions mt-4">
+              <button type="button" id="btn-step2-back" class="btn btn-unam-secondary btn-lg-senior">
+                <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>
+                <span>Regresar al Paso 1</span>
+              </button>
+              <button type="button" id="btn-step2-next" class="btn btn-unam-primary btn-lg-senior">
+                <span>Continuar al Paso 3</span>
+                <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
+              </button>
+            </div>
+          </article>
+
+          <!-- -----------------------------------------------------------------
+               PASO 3: DATOS DEL DUEÑO Y DE LA MASCOTA
+               ----------------------------------------------------------------- -->
+          <article id="wizard-step-3" class="step-card d-none" aria-labelledby="step-3-heading">
+            <div class="step-card-header">
+              <h2 id="step-3-heading" class="step-title" tabindex="-1">
+                Paso 3: Datos del dueño y de la mascota
+              </h2>
+              <p class="step-lead mb-0">
+                Complete los datos marcados como <strong>obligatorios</strong>. Los campos opcionales puede dejarlos en blanco si lo prefiere.
+              </p>
+            </div>
+
+            <div id="step3-context-summary" class="context-pill mb-4"></div>
+            <div id="step3-alert" class="alert-box d-none" role="alert"></div>
+
+            <form id="wizard-details-form" novalidate>
+              <!-- Bloque A: Datos del dueño o responsable -->
+              <fieldset class="form-section-box mb-4">
+                <legend class="form-section-legend">
+                  <i class="bi bi-person-fill me-2" aria-hidden="true"></i>
+                  Datos de la persona responsable
+                </legend>
+
+                <div class="row g-4">
+                  <div class="col-12">
+                    <label for="owner-name" class="form-label senior-label">
+                      Nombre completo del dueño o tutor
+                      <span class="required-tag">Obligatorio</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="owner-name"
+                      name="ownerName"
+                      class="form-control senior-input"
+                      autocomplete="name"
+                      maxlength="120"
+                      aria-describedby="owner-name-help owner-name-error"
+                      required
+                    />
+                    <div id="owner-name-help" class="form-text senior-help">
+                      Ejemplo: María Elena López Hernández
+                    </div>
+                    <div id="owner-name-error" class="field-error d-none" role="alert"></div>
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <label for="owner-phone" class="form-label senior-label">
+                      Teléfono de contacto (10 dígitos)
+                      <span class="required-tag">Obligatorio</span>
+                    </label>
+                    <input
+                      type="tel"
+                      id="owner-phone"
+                      name="ownerPhone"
+                      class="form-control senior-input"
+                      inputmode="tel"
+                      autocomplete="tel"
+                      maxlength="20"
+                      aria-describedby="owner-phone-help owner-phone-error"
+                      required
+                    />
+                    <div id="owner-phone-help" class="form-text senior-help">
+                      10 dígitos, ejemplo: 5512345678
+                    </div>
+                    <div id="owner-phone-error" class="field-error d-none" role="alert"></div>
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <label for="owner-email" class="form-label senior-label">
+                      Correo electrónico
+                      <span class="optional-tag">Opcional</span>
+                    </label>
+                    <input
+                      type="email"
+                      id="owner-email"
+                      name="ownerEmail"
+                      class="form-control senior-input"
+                      autocomplete="email"
+                      maxlength="120"
+                      aria-describedby="owner-email-help owner-email-error"
+                    />
+                    <div id="owner-email-help" class="form-text senior-help">
+                      Ejemplo: maria.lopez@correo.com
+                    </div>
+                    <div id="owner-email-error" class="field-error d-none" role="alert"></div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <!-- Bloque B: Datos de la mascota -->
+              <fieldset class="form-section-box">
+                <legend class="form-section-legend">
+                  <i class="bi bi-heart-fill me-2" aria-hidden="true"></i>
+                  Datos de su mascota
+                </legend>
+
+                <div class="row g-4">
+                  <div class="col-12">
+                    <p id="pet-species-label" class="form-label senior-label mb-2">
+                      ¿Qué tipo de mascota es?
+                      <span class="required-tag">Obligatorio</span>
+                    </p>
+                    <div id="pet-species-help" class="form-text senior-help mb-2">
+                      Toque el recuadro que corresponda a su mascota.
+                    </div>
+                    <div
+                      id="species-grid"
+                      class="species-grid"
+                      role="group"
+                      aria-labelledby="pet-species-label"
+                      aria-describedby="pet-species-help pet-species-error"
+                    ></div>
+                    <div id="pet-species-error" class="field-error d-none mt-2" role="alert"></div>
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <label for="pet-name" class="form-label senior-label">
+                      Nombre de la mascota
+                      <span class="required-tag">Obligatorio</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="pet-name"
+                      name="petName"
+                      class="form-control senior-input"
+                      maxlength="80"
+                      aria-describedby="pet-name-help pet-name-error"
+                      required
+                    />
+                    <div id="pet-name-help" class="form-text senior-help">
+                      Ejemplo: Luna, Max o Firulais
+                    </div>
+                    <div id="pet-name-error" class="field-error d-none" role="alert"></div>
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <label for="pet-age" class="form-label senior-label">
+                      Edad aproximada
+                      <span class="optional-tag">Opcional</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="pet-age"
+                      name="petAge"
+                      class="form-control senior-input"
+                      maxlength="40"
+                      aria-describedby="pet-age-help pet-age-error"
+                    />
+                    <div id="pet-age-help" class="form-text senior-help">
+                      Ejemplo: 3 años o 6 meses
+                    </div>
+                    <div id="pet-age-error" class="field-error d-none" role="alert"></div>
+                  </div>
+
+                  <div class="col-12">
+                    <label for="reason-notes" class="form-label senior-label">
+                      Motivo breve de la consulta
+                      <span class="optional-tag">Opcional</span>
+                    </label>
+                    <textarea
+                      id="reason-notes"
+                      name="reasonNotes"
+                      class="form-control senior-input"
+                      rows="3"
+                      maxlength="400"
+                      aria-describedby="reason-notes-help reason-notes-error"
+                    ></textarea>
+                    <div id="reason-notes-help" class="form-text senior-help">
+                      Ejemplo: Le toca su vacuna anual, o tiene tos desde hace dos días.
+                    </div>
+                    <div id="reason-notes-error" class="field-error d-none" role="alert"></div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <div class="step-actions mt-4">
+                <button type="button" id="btn-step3-back" class="btn btn-unam-secondary btn-lg-senior">
+                  <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>
+                  <span>Regresar al Paso 2</span>
+                </button>
+                <button type="submit" id="btn-step3-next" class="btn btn-unam-primary btn-lg-senior">
+                  <span>Revisar mi cita (Paso 4)</span>
+                  <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
+                </button>
+              </div>
+            </form>
+          </article>
+
+          <!-- -----------------------------------------------------------------
+               PASO 4: REVISE Y CONFIRME SU CITA
+               ----------------------------------------------------------------- -->
+          <article id="wizard-step-4" class="step-card d-none" aria-labelledby="step-4-heading">
+            <div class="step-card-header">
+              <h2 id="step-4-heading" class="step-title" tabindex="-1">
+                Paso 4: Revise y confirme su cita
+              </h2>
+              <p class="step-lead mb-0">
+                Verifique con calma que todos los datos sean correctos. Si todo está bien, presione el botón verde <strong>"Confirmar mi cita"</strong>.
+              </p>
+            </div>
+
+            <div id="step4-alert" class="alert-box d-none" role="alert"></div>
+
+            <!-- Tarjeta de resumen fácil de leer (llenada de forma segura con JS) -->
+            <div id="review-summary-card" class="summary-card mb-4"></div>
+
+            <div class="info-reminder-box mb-4">
+              <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+              <p class="mb-0">
+                Al confirmar, le entregaremos un <strong>número de folio</strong> que podrá anotar o imprimir como comprobante de su cita.
+              </p>
+            </div>
+
+            <div class="step-actions mt-4">
+              <button type="button" id="btn-step4-back" class="btn btn-unam-secondary btn-lg-senior">
+                <i class="bi bi-pencil-square me-2" aria-hidden="true"></i>
+                <span>Corregir datos</span>
+              </button>
+              <button type="button" id="btn-step4-confirm" class="btn btn-unam-confirm btn-lg-senior">
+                <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
+                <span>Confirmar mi cita</span>
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <!-- ===================================================================
+             PANTALLA DE ÉXITO Y COMPROBANTE IMPRIMIBLE DE CITA
+             =================================================================== -->
+        <article
+          id="booking-receipt"
+          class="step-card receipt-card d-none"
+          aria-labelledby="receipt-heading"
+        >
+          <div class="receipt-banner">
+            <div class="receipt-check-circle" aria-hidden="true">
+              <i class="bi bi-check-lg"></i>
+            </div>
+            <div>
+              <h2 id="receipt-heading" class="receipt-title mb-1" tabindex="-1">
+                ¡Su cita quedó agendada!
+              </h2>
+              <p class="mb-0 receipt-subtitle">
+                Guarde o imprima su número de folio para cualquier consulta o cambio.
+              </p>
+            </div>
+          </div>
+
+          <!-- Folio en letra muy grande para lectura sin esfuerzo -->
+          <div class="folio-highlight-box my-4">
+            <p class="folio-caption mb-1">SU NÚMERO DE FOLIO ES:</p>
+            <p id="receipt-folio" class="folio-number mb-2"></p>
+            <div class="no-print d-flex flex-wrap justify-content-center align-items-center gap-2 mt-2">
+              <button type="button" id="btn-copy-folio" class="btn btn-unam-outline btn-sm-senior">
+                <i class="bi bi-clipboard-check me-2" aria-hidden="true"></i>
+                <span>Copiar folio</span>
+              </button>
+              <span id="copy-folio-feedback" class="copy-feedback d-none" role="status"></span>
+            </div>
+          </div>
+
+          <!-- Resumen de la cita creada -->
+          <div id="receipt-details" class="summary-card mb-4"></div>
+
+          <!-- Indicaciones importantes para el día de la visita -->
+          <div class="arrival-instructions-box mb-4">
+            <h3 class="arrival-title">
+              <i class="bi bi-exclamation-circle-fill me-2" aria-hidden="true"></i>
+              Indicaciones para el día de su cita
+            </h3>
+            <ul class="arrival-list mb-0">
+              <li id="receipt-arrival-note">
+                Por favor llegue <strong>15 minutos antes</strong> de su horario para agilizar su registro en recepción.
+              </li>
+              <li>
+                Traiga a su mascota con <strong>correa o transportadora segura</strong>, y si cuenta con cartilla de vacunación, tráigala consigo.
+              </li>
+              <li id="receipt-hospital-contact">
+                Dirección y dudas: Hospital de Pequeñas Especies UNAM FES Cuautitlán Campo 4.
+              </li>
+            </ul>
+          </div>
+
+          <!-- Acciones posteriores (ocultas al imprimir) -->
+          <div class="step-actions no-print mt-4">
+            <button type="button" id="btn-print-receipt" class="btn btn-unam-primary btn-lg-senior">
+              <i class="bi bi-printer-fill me-2" aria-hidden="true"></i>
+              <span>Imprimir comprobante</span>
+            </button>
+            <button type="button" id="btn-book-another" class="btn btn-unam-secondary btn-lg-senior">
+              <i class="bi bi-calendar-plus me-2" aria-hidden="true"></i>
+              <span>Agendar otra cita</span>
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <!-- =====================================================================
+           PESTAÑA 2: CONSULTAR O CANCELAR MI CITA
+           ===================================================================== -->
+      <section
+        id="panel-lookup"
+        role="tabpanel"
+        aria-labelledby="tab-lookup"
+        class="main-panel d-none"
+      >
+        <article class="step-card" aria-labelledby="lookup-heading">
+          <div class="step-card-header">
+            <h2 id="lookup-heading" class="step-title" tabindex="-1">
+              Consultar o cancelar mi cita
+            </h2>
+            <p class="step-lead mb-0">
+              Escriba el <strong>número de folio</strong> que recibió al agendar y el <strong>teléfono de 10 dígitos</strong> con el que registró su cita.
+            </p>
+          </div>
+
+          <form id="lookup-form" class="lookup-form-box mb-4" novalidate>
+            <div class="row g-4">
+              <div class="col-12 col-md-6">
+                <label for="lookup-folio" class="form-label senior-label">
+                  Número de folio
+                  <span class="required-tag">Obligatorio</span>
+                </label>
+                <input
+                  type="text"
+                  id="lookup-folio"
+                  name="folio"
+                  class="form-control senior-input text-uppercase"
+                  maxlength="40"
+                  aria-describedby="lookup-folio-help lookup-folio-error"
+                  required
+                />
+                <div id="lookup-folio-help" class="form-text senior-help">
+                  Ejemplo: HPE-20261127-1234
+                </div>
+                <div id="lookup-folio-error" class="field-error d-none" role="alert"></div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label for="lookup-phone" class="form-label senior-label">
+                  Teléfono registrado (10 dígitos)
+                  <span class="required-tag">Obligatorio</span>
+                </label>
+                <input
+                  type="tel"
+                  id="lookup-phone"
+                  name="phone"
+                  class="form-control senior-input"
+                  inputmode="tel"
+                  maxlength="20"
+                  aria-describedby="lookup-phone-help lookup-phone-error"
+                  required
+                />
+                <div id="lookup-phone-help" class="form-text senior-help">
+                  10 dígitos, ejemplo: 5512345678
+                </div>
+                <div id="lookup-phone-error" class="field-error d-none" role="alert"></div>
+              </div>
+            </div>
+
+            <div class="step-actions step-actions-end mt-4">
+              <button type="submit" id="btn-lookup-submit" class="btn btn-unam-primary btn-lg-senior">
+                <i class="bi bi-search me-2" aria-hidden="true"></i>
+                <span>Buscar mi cita</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- Mensajes de error o confirmación de la consulta -->
+          <div id="lookup-alert" class="alert-box d-none mb-4" role="alert"></div>
+
+          <!-- Resultado de la cita consultada (se construye dinámicamente sin innerHTML) -->
+          <div id="lookup-result" class="d-none" aria-live="polite"></div>
+        </article>
+      </section>
+    </main>
+
+    <!-- =======================================================================
+         MODAL DE CONFIRMACIÓN AMABLE PARA CANCELAR CITA
+         Previene cancelaciones accidentales por un clic involuntario.
+         ======================================================================= -->
+    <div
+      class="modal fade no-print"
+      id="cancelAppointmentModal"
+      tabindex="-1"
+      aria-labelledby="cancelModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content senior-modal">
+          <div class="modal-header senior-modal-header">
+            <h2 class="modal-title h4 mb-0" id="cancelModalLabel">
+              <i class="bi bi-exclamation-triangle-fill text-warning me-2" aria-hidden="true"></i>
+              Confirmar cancelación de cita
+            </h2>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Cerrar ventana"
+            ></button>
+          </div>
+          <div class="modal-body p-4">
+            <p class="fs-5 mb-3">
+              ¿Está seguro(a) de que desea <strong>cancelar esta cita</strong>? El horario quedará libre para otra mascota.
+            </p>
+            <div id="cancel-modal-summary" class="cancel-summary-box mb-3"></div>
+            <div id="cancel-modal-error" class="alert-box alert-box-danger d-none" role="alert"></div>
+          </div>
+          <div class="modal-footer senior-modal-footer">
+            <button
+              type="button"
+              id="btn-cancel-modal-keep"
+              class="btn btn-unam-secondary btn-lg-senior"
+              data-bs-dismiss="modal"
+            >
+              No, conservar mi cita
+            </button>
+            <button
+              type="button"
+              id="btn-cancel-modal-confirm"
+              class="btn btn-unam-danger btn-lg-senior"
+            >
+              <i class="bi bi-x-circle-fill me-2" aria-hidden="true"></i>
+              <span>Sí, cancelar mi cita</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =======================================================================
+         PIE DE PÁGINA INSTITUCIONAL CON ENLACE DISCRETO AL PANEL ADMIN
+         ======================================================================= -->
+    <footer class="site-footer no-print">
+      <div class="container py-4">
+        <div class="row align-items-center g-3">
+          <div class="col-12 col-md-8">
+            <p class="fw-bold mb-1 text-unam-blue">
+              Hospital de Pequeñas Especies · UNAM FES Cuautitlán (Campo 4)
+            </p>
+            <p id="footer-address" class="mb-0 footer-meta">
+              Km 2.5 Carretera Cuautitlán-Teoloyucan, San Sebastián Xhala, Cuautitlán Izcalli, Edo. de Méx.
+            </p>
+          </div>
+          <div class="col-12 col-md-4 text-md-end">
+            <a href="/admin" class="admin-footer-link">
+              <i class="bi bi-lock-fill me-1" aria-hidden="true"></i>
+              <span>Personal administrativo · Iniciar sesión</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Bootstrap JS local y punto de entrada modular de la página pública -->
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js" defer></script>
+    <script type="module" src="/js/citas/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,1482 @@
+/* =============================================================================
+   Archivo: public/css/theme.css
+   Propósito: Hoja de estilos principal de la Página Pública de Citas del
+              Hospital de Pequeñas Especies · UNAM FES Cuautitlán (Campo 4).
+
+   Principios de diseño aplicados:
+   1. Identidad UNAM limpia y moderna: Azul UNAM (#002B5C) y Oro UNAM (#C59B27).
+   2. Accesibilidad prioritaria para personas mayores:
+      - Letra base de 18px escalable a 21px (A+) y 24px (A++).
+      - Interlineado amplio (1.6) y texto de muy alto contraste (#16202A).
+      - Botones grandes (min-height: 54px) con zonas de toque cómodas.
+      - Foco de teclado altamente visible (outline: 3px solid #C59B27).
+      - Modo de Alto Contraste completo activable con un clic.
+   3. Impresión limpia (@media print) para el comprobante de cita.
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   1. VARIABLES DE COLOR, TIPOGRAFÍA Y ESPACIADO
+   ----------------------------------------------------------------------------- */
+:root {
+  --unam-blue: #002b5c;
+  --unam-blue-dark: #001d3f;
+  --unam-blue-soft: #e8f0fa;
+  --unam-gold: #c59b27;
+  --unam-gold-soft: #fdf7e3;
+  --unam-gold-border: #b38919;
+
+  --page-bg: #f4f7fb;
+  --card-bg: #ffffff;
+  --surface-subtle: #edf2f8;
+
+  --text-main: #16202a;
+  --text-muted: #425264;
+  --border-color: #c5d1e0;
+  --border-strong: #8fa3bc;
+
+  --success-bg: #e7f6ee;
+  --success-border: #1e7e4f;
+  --success-text: #114d30;
+  --success-btn: #166e43;
+  --success-btn-hover: #0f5633;
+
+  --danger-bg: #fdecec;
+  --danger-border: #b42318;
+  --danger-text: #7a1710;
+
+  --warning-bg: #fff8e6;
+  --warning-border: #b37b00;
+  --warning-text: #5c3d00;
+
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --shadow-card: 0 6px 20px rgba(0, 43, 92, 0.08);
+  --focus-ring: 3px solid #c59b27;
+}
+
+/* Escalado accesible de fuente en la raíz (rem se adapta en toda la página) */
+html {
+  font-size: 18px;
+  scroll-behavior: smooth;
+}
+
+html.font-lg {
+  font-size: 21px;
+}
+
+html.font-xl {
+  font-size: 24px;
+}
+
+body {
+  background-color: var(--page-bg);
+  color: var(--text-main);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+/* -----------------------------------------------------------------------------
+   2. FOCO DE TECLADO Y ENLACE DE SALTO (ACCESIBILIDAD)
+   ----------------------------------------------------------------------------- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--focus-ring) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 6px rgba(197, 155, 39, 0.25) !important;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0.75rem;
+  z-index: 2000;
+  background-color: var(--unam-blue);
+  color: #ffffff;
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 3px solid var(--unam-gold);
+}
+
+.skip-link:focus {
+  left: 0.75rem;
+}
+
+.text-unam-blue {
+  color: var(--unam-blue) !important;
+}
+
+.text-unam-gold {
+  color: var(--unam-gold) !important;
+}
+
+/* -----------------------------------------------------------------------------
+   3. BARRA SUPERIOR DE ACCESIBILIDAD (A-, A+, A++, ALTO CONTRASTE)
+   ----------------------------------------------------------------------------- */
+.a11y-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background-color: var(--unam-blue-dark);
+  color: #ffffff;
+  border-bottom: 3px solid var(--unam-gold);
+  padding: 0.5rem 0;
+}
+
+.a11y-bar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+
+.a11y-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.a11y-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.a11y-btn {
+  min-height: 46px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.a11y-btn:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
+.a11y-btn[aria-pressed="true"] {
+  background-color: var(--unam-gold);
+  color: #16202a;
+  border-color: #ffffff;
+}
+
+/* -----------------------------------------------------------------------------
+   4. ENCABEZADO INSTITUCIONAL UNAM
+   ----------------------------------------------------------------------------- */
+.site-header {
+  background: linear-gradient(135deg, var(--unam-blue) 0%, #003b7a 100%);
+  color: #ffffff;
+  border-bottom: 5px solid var(--unam-gold);
+}
+
+.brand-emblem {
+  width: 68px;
+  height: 68px;
+  min-width: 68px;
+  border-radius: 16px;
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 2px solid var(--unam-gold);
+  color: var(--unam-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.brand-institution {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f6dc8d;
+}
+
+.brand-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #ffffff;
+}
+
+.header-contact-box {
+  background-color: rgba(0, 20, 46, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.1rem;
+}
+
+.header-contact-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.header-contact-row i {
+  font-size: 1.15rem;
+  margin-top: 0.15rem;
+}
+
+.header-contact-label {
+  display: inline-block;
+  font-size: 0.88rem;
+  color: #dce7f5;
+  margin-right: 0.35rem;
+}
+
+.header-phone-link {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.header-phone-link:hover {
+  color: #f6dc8d;
+}
+
+.header-address-text {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: #eef4fc;
+}
+
+/* -----------------------------------------------------------------------------
+   5. SELECTOR PRINCIPAL DE PESTAÑAS (AGENDAR / CONSULTAR)
+   ----------------------------------------------------------------------------- */
+.mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.mode-tab-btn {
+  min-height: 82px;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--border-strong);
+  background-color: var(--card-bg);
+  color: var(--text-main);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 3px 10px rgba(0, 43, 92, 0.06);
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.mode-tab-btn:hover {
+  border-color: var(--unam-blue);
+  transform: translateY(-1px);
+}
+
+.mode-tab-btn.active {
+  background-color: var(--unam-blue);
+  border-color: var(--unam-blue);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 43, 92, 0.22);
+}
+
+.mode-tab-icon {
+  font-size: 1.85rem;
+  color: var(--unam-blue);
+  flex-shrink: 0;
+}
+
+.mode-tab-btn.active .mode-tab-icon {
+  color: var(--unam-gold);
+}
+
+.mode-tab-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.mode-tab-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.mode-tab-desc {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.mode-tab-btn.active .mode-tab-desc {
+  color: #dce7f5;
+}
+
+/* -----------------------------------------------------------------------------
+   6. INDICADOR DE PROGRESO (PASO 1 DE 4 ... PASO 4 DE 4)
+   ----------------------------------------------------------------------------- */
+.stepper-card {
+  background-color: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.35rem;
+  box-shadow: var(--shadow-card);
+}
+
+.stepper-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.step-counter-badge {
+  display: inline-block;
+  background-color: var(--unam-blue);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+}
+
+.stepper-subtitle {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.stepper-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.stepper-item {
+  display: flex;
+}
+
+.stepper-btn {
+  width: 100%;
+  min-height: 56px;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  border: 2px solid var(--border-color);
+  background-color: var(--surface-subtle);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.stepper-btn:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.stepper-circle {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 2px solid var(--border-strong);
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.stepper-item.active .stepper-btn {
+  background-color: var(--unam-blue-soft);
+  border-color: var(--unam-blue);
+  color: var(--unam-blue);
+}
+
+.stepper-item.active .stepper-circle {
+  background-color: var(--unam-blue);
+  border-color: var(--unam-blue);
+  color: #ffffff;
+}
+
+.stepper-item.completed .stepper-btn {
+  background-color: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
+  cursor: pointer;
+}
+
+.stepper-item.completed .stepper-btn:hover {
+  background-color: #d5efe1;
+}
+
+.stepper-item.completed .stepper-circle {
+  background-color: var(--success-border);
+  border-color: var(--success-border);
+  color: #ffffff;
+}
+
+/* -----------------------------------------------------------------------------
+   7. TARJETAS DE PASOS, BOTONES GRANDES Y CONTROLES DE FORMULARIO
+   ----------------------------------------------------------------------------- */
+.step-card {
+  background-color: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  box-shadow: var(--shadow-card);
+}
+
+.step-card-header {
+  border-bottom: 2px solid var(--surface-subtle);
+  padding-bottom: 1.15rem;
+  margin-bottom: 1.5rem;
+}
+
+.step-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--unam-blue);
+  margin-bottom: 0.45rem;
+}
+
+.step-lead {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.section-sublabel {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--unam-blue);
+}
+
+.context-pill {
+  background-color: var(--unam-blue-soft);
+  border: 2px solid #b5cde8;
+  border-left: 6px solid var(--unam-blue);
+  border-radius: 12px;
+  padding: 0.85rem 1.1rem;
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+/* Botones principales grandes (mínimo 54px de alto) */
+.btn-lg-senior {
+  min-height: 56px;
+  padding: 0.8rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1.02rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.btn-sm-senior {
+  min-height: 46px;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.btn-unam-primary {
+  background-color: var(--unam-blue);
+  border: 2px solid var(--unam-blue);
+  color: #ffffff;
+}
+
+.btn-unam-primary:hover,
+.btn-unam-primary:active {
+  background-color: var(--unam-blue-dark);
+  border-color: var(--unam-blue-dark);
+  color: #ffffff;
+}
+
+.btn-unam-primary:disabled {
+  background-color: #6c8097;
+  border-color: #6c8097;
+  color: #ffffff;
+}
+
+.btn-unam-secondary {
+  background-color: #ffffff;
+  border: 2px solid var(--unam-blue);
+  color: var(--unam-blue);
+}
+
+.btn-unam-secondary:hover,
+.btn-unam-secondary:active {
+  background-color: var(--unam-blue-soft);
+  border-color: var(--unam-blue-dark);
+  color: var(--unam-blue-dark);
+}
+
+.btn-unam-outline {
+  background-color: #ffffff;
+  border: 2px solid var(--border-strong);
+  color: var(--text-main);
+}
+
+.btn-unam-outline:hover {
+  background-color: var(--surface-subtle);
+  border-color: var(--unam-blue);
+  color: var(--unam-blue);
+}
+
+.btn-unam-confirm {
+  background-color: var(--success-btn);
+  border: 2px solid var(--success-btn);
+  color: #ffffff;
+}
+
+.btn-unam-confirm:hover,
+.btn-unam-confirm:active {
+  background-color: var(--success-btn-hover);
+  border-color: var(--success-btn-hover);
+  color: #ffffff;
+}
+
+.btn-unam-danger {
+  background-color: var(--danger-border);
+  border: 2px solid var(--danger-border);
+  color: #ffffff;
+}
+
+.btn-unam-danger:hover,
+.btn-unam-danger:active {
+  background-color: #8f1b13;
+  border-color: #8f1b13;
+  color: #ffffff;
+}
+
+.btn-unam-danger-outline {
+  background-color: #ffffff;
+  border: 2px solid var(--danger-border);
+  color: var(--danger-border);
+}
+
+.btn-unam-danger-outline:hover {
+  background-color: var(--danger-bg);
+  border-color: #8f1b13;
+  color: #8f1b13;
+}
+
+.step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--surface-subtle);
+}
+
+.step-actions-end {
+  justify-content: flex-end;
+}
+
+/* -----------------------------------------------------------------------------
+   8. PASO 1: TARJETAS DE SERVICIOS
+   ----------------------------------------------------------------------------- */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.service-card {
+  width: 100%;
+  min-height: 140px;
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-strong);
+  background-color: var(--card-bg);
+  color: var(--text-main);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.service-card:hover {
+  border-color: var(--unam-blue);
+  background-color: #f8fbff;
+  box-shadow: 0 6px 16px rgba(0, 43, 92, 0.1);
+}
+
+.service-card.selected {
+  border: 3px solid var(--unam-blue);
+  background-color: var(--unam-blue-soft);
+  box-shadow: 0 8px 20px rgba(0, 43, 92, 0.18);
+}
+
+.service-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.service-icon-wrap {
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  border-radius: 14px;
+  background-color: var(--unam-blue-soft);
+  color: var(--unam-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+}
+
+.service-card.selected .service-icon-wrap {
+  background-color: var(--unam-blue);
+  color: var(--unam-gold);
+}
+
+.service-name {
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: var(--unam-blue);
+  margin-bottom: 0.25rem;
+}
+
+.service-desc {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+
+.service-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.service-duration {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.service-selected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: var(--unam-blue);
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 800;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+}
+
+/* -----------------------------------------------------------------------------
+   9. PASO 2: FECHAS RÁPIDAS Y CUADRÍCULA DE HORARIOS
+   ----------------------------------------------------------------------------- */
+.quick-dates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 0.75rem;
+}
+
+.quick-date-btn {
+  min-height: 68px;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  border: 2px solid var(--border-strong);
+  background-color: var(--card-bg);
+  color: var(--text-main);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.quick-date-btn:hover {
+  border-color: var(--unam-blue);
+  background-color: var(--unam-blue-soft);
+}
+
+.quick-date-btn.selected {
+  background-color: var(--unam-blue);
+  border-color: var(--unam-blue);
+  color: #ffffff;
+}
+
+.quick-date-title {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.quick-date-sub {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.quick-date-btn.selected .quick-date-sub {
+  color: #f6dc8d;
+}
+
+.date-picker-box {
+  background-color: var(--surface-subtle);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.25rem;
+}
+
+.selected-date-banner {
+  background-color: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.selected-date-caption {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.selected-date-value {
+  font-size: 1.05rem;
+  color: var(--unam-blue);
+  text-transform: capitalize;
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 0.85rem;
+}
+
+.slot-btn {
+  min-height: 74px;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 2px solid var(--unam-blue);
+  background-color: var(--card-bg);
+  color: var(--unam-blue);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.slot-btn:hover:not(:disabled) {
+  background-color: var(--unam-blue-soft);
+  transform: translateY(-1px);
+}
+
+.slot-btn.selected {
+  background-color: var(--unam-blue);
+  border: 3px solid var(--unam-gold);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 43, 92, 0.24);
+}
+
+.slot-btn:disabled {
+  background-color: #eef1f5;
+  border: 2px dashed #aeb9c7;
+  color: #5a6776;
+  cursor: not-allowed;
+}
+
+.slot-time-text {
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.slot-spots-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+  color: var(--success-text);
+}
+
+.slot-btn.selected .slot-spots-text {
+  color: #f6dc8d;
+}
+
+.slot-btn:disabled .slot-spots-text {
+  color: #5a6776;
+}
+
+/* -----------------------------------------------------------------------------
+   10. PASO 3: FORMULARIO AMPLIO Y BOTONES DE ESPECIE
+   ----------------------------------------------------------------------------- */
+.form-section-box {
+  background-color: #fbfcfe;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.35rem;
+}
+
+.form-section-legend {
+  float: none;
+  width: auto;
+  padding: 0 0.6rem;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: var(--unam-blue);
+  margin-bottom: 0.85rem;
+}
+
+.senior-label {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.required-tag {
+  font-size: 0.76rem;
+  font-weight: 800;
+  background-color: var(--unam-blue-soft);
+  color: var(--unam-blue);
+  border: 1px solid #9ab9de;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+}
+
+.optional-tag {
+  font-size: 0.76rem;
+  font-weight: 700;
+  background-color: var(--surface-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+}
+
+.senior-input {
+  min-height: 54px;
+  padding: 0.7rem 0.95rem;
+  font-size: 1rem;
+  color: var(--text-main);
+  background-color: #ffffff;
+  border: 2px solid var(--border-strong);
+  border-radius: 12px;
+}
+
+.senior-input:focus {
+  border-color: var(--unam-blue);
+}
+
+.senior-input.is-invalid {
+  border-color: var(--danger-border);
+  background-color: #fffafa;
+}
+
+.senior-help {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+}
+
+.field-error {
+  margin-top: 0.45rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background-color: var(--danger-bg);
+  border-left: 4px solid var(--danger-border);
+  color: var(--danger-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.species-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.species-btn {
+  min-height: 60px;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  border: 2px solid var(--border-strong);
+  background-color: #ffffff;
+  color: var(--text-main);
+  font-weight: 800;
+  font-size: 0.96rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.species-btn:hover {
+  border-color: var(--unam-blue);
+  background-color: var(--unam-blue-soft);
+}
+
+.species-btn.selected {
+  background-color: var(--unam-blue);
+  border-color: var(--unam-blue);
+  color: #ffffff;
+}
+
+.species-btn.selected i {
+  color: var(--unam-gold);
+}
+
+/* -----------------------------------------------------------------------------
+   11. PASO 4, RESUMEN, PANTALLA DE ÉXITO Y CONSULTA
+   ----------------------------------------------------------------------------- */
+.summary-card {
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background-color: #fbfcfe;
+  overflow: hidden;
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 0.5rem 1.25rem;
+  padding: 0.95rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  align-items: center;
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-key {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.summary-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+  word-break: break-word;
+}
+
+.summary-edit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: 0.85rem 1.25rem;
+  background-color: var(--surface-subtle);
+  border-top: 1px solid var(--border-color);
+}
+
+.info-reminder-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  background-color: var(--unam-blue-soft);
+  border: 2px solid #9ab9de;
+  border-radius: var(--radius-md);
+  padding: 1rem 1.2rem;
+  color: var(--text-main);
+}
+
+.info-reminder-box i {
+  font-size: 1.35rem;
+  color: var(--unam-blue);
+  margin-top: 0.1rem;
+}
+
+/* Pantalla de éxito / Comprobante */
+.receipt-card {
+  border: 3px solid var(--success-border);
+}
+
+.receipt-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  background-color: var(--success-bg);
+  border: 2px solid var(--success-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+}
+
+.receipt-check-circle {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  border-radius: 50%;
+  background-color: var(--success-border);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.receipt-title {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--success-text);
+}
+
+.receipt-subtitle {
+  color: var(--text-main);
+}
+
+.folio-highlight-box {
+  background-color: var(--unam-gold-soft);
+  border: 3px solid var(--unam-gold-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.folio-caption {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--unam-blue);
+}
+
+.folio-number {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: clamp(1.85rem, 4.5vw, 2.85rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--unam-blue-dark);
+  line-height: 1.15;
+  word-break: break-all;
+}
+
+.copy-feedback {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--success-text);
+}
+
+.arrival-instructions-box {
+  background-color: var(--unam-blue-soft);
+  border: 2px solid var(--unam-blue);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.4rem;
+}
+
+.arrival-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--unam-blue);
+  margin-bottom: 0.75rem;
+}
+
+.arrival-list li + li {
+  margin-top: 0.5rem;
+}
+
+/* Alertas, avisos y estados de carga */
+.loading-box {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--unam-blue);
+  font-weight: 700;
+}
+
+.alert-box {
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  border: 2px solid var(--border-strong);
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+}
+
+.alert-box-danger {
+  background-color: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+
+.alert-box-success {
+  background-color: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
+}
+
+.alert-box-warning {
+  background-color: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning-text);
+}
+
+.notice-box {
+  background-color: var(--warning-bg);
+  border: 2px solid var(--warning-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  color: var(--warning-text);
+}
+
+.notice-title {
+  font-size: 1.12rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+}
+
+/* Sección Consultar o cancelar */
+.lookup-form-box {
+  background-color: #fbfcfe;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.35rem;
+}
+
+.lookup-status-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  background-color: var(--unam-blue-soft);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.status-pill {
+  font-size: 0.95rem;
+  font-weight: 800;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+}
+
+.cancel-summary-box {
+  background-color: var(--surface-subtle);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+}
+
+.senior-modal {
+  border-radius: var(--radius-lg);
+  border: 3px solid var(--unam-blue);
+  overflow: hidden;
+}
+
+.senior-modal-header {
+  background-color: var(--unam-blue);
+  color: #ffffff;
+  padding: 1.15rem 1.4rem;
+}
+
+.senior-modal-footer {
+  padding: 1rem 1.4rem;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+/* -----------------------------------------------------------------------------
+   12. PIE DE PÁGINA
+   ----------------------------------------------------------------------------- */
+.site-footer {
+  background-color: #ffffff;
+  border-top: 3px solid var(--unam-blue);
+  margin-top: auto;
+}
+
+.footer-meta {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+
+.admin-footer-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+}
+
+.admin-footer-link:hover {
+  color: var(--unam-blue);
+  background-color: var(--surface-subtle);
+  text-decoration: underline;
+}
+
+/* -----------------------------------------------------------------------------
+   13. MODO DE ALTO CONTRASTE (html.high-contrast)
+   Máxima legibilidad: negro puro, blanco puro, bordes gruesos y amarillo vivo.
+   ----------------------------------------------------------------------------- */
+html.high-contrast {
+  --unam-blue: #000000;
+  --unam-blue-dark: #000000;
+  --unam-blue-soft: #ffffff;
+  --unam-gold: #ffdd00;
+  --unam-gold-soft: #fff9c4;
+  --unam-gold-border: #000000;
+
+  --page-bg: #ffffff;
+  --card-bg: #ffffff;
+  --surface-subtle: #ffffff;
+
+  --text-main: #000000;
+  --text-muted: #111111;
+  --border-color: #000000;
+  --border-strong: #000000;
+
+  --success-bg: #ffffff;
+  --success-border: #000000;
+  --success-text: #000000;
+  --success-btn: #000000;
+  --success-btn-hover: #222222;
+
+  --danger-bg: #ffffff;
+  --danger-border: #000000;
+  --danger-text: #000000;
+
+  --warning-bg: #fff9c4;
+  --warning-border: #000000;
+  --warning-text: #000000;
+
+  --shadow-card: none;
+  --focus-ring: 4px solid #ffdd00;
+}
+
+html.high-contrast .site-header,
+html.high-contrast .a11y-bar {
+  background: #000000;
+  color: #ffffff;
+  border-bottom: 4px solid #ffdd00;
+}
+
+html.high-contrast .brand-institution,
+html.high-contrast .header-phone-link {
+  color: #ffdd00;
+}
+
+html.high-contrast .step-card,
+html.high-contrast .stepper-card,
+html.high-contrast .service-card,
+html.high-contrast .quick-date-btn,
+html.high-contrast .slot-btn,
+html.high-contrast .species-btn,
+html.high-contrast .senior-input,
+html.high-contrast .mode-tab-btn,
+html.high-contrast .summary-card,
+html.high-contrast .form-section-box {
+  border-width: 3px;
+  border-color: #000000;
+}
+
+html.high-contrast .service-card.selected,
+html.high-contrast .quick-date-btn.selected,
+html.high-contrast .slot-btn.selected,
+html.high-contrast .species-btn.selected,
+html.high-contrast .mode-tab-btn.active {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+html.high-contrast .service-card.selected .service-name,
+html.high-contrast .service-card.selected .service-desc,
+html.high-contrast .service-card.selected .service-duration,
+html.high-contrast .mode-tab-btn.active .mode-tab-desc {
+  color: #ffffff;
+}
+
+html.high-contrast .service-card.selected .service-selected-badge {
+  background-color: #ffdd00;
+  color: #000000;
+}
+
+html.high-contrast .stepper-item.active .stepper-btn {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+html.high-contrast .stepper-item.active .stepper-circle {
+  background-color: #ffdd00;
+  color: #000000;
+}
+
+html.high-contrast .btn-unam-confirm {
+  background-color: #000000;
+  color: #ffdd00;
+  border: 3px solid #000000;
+}
+
+html.high-contrast .a11y-btn[aria-pressed="true"] {
+  background-color: #ffdd00;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+/* -----------------------------------------------------------------------------
+   14. DISEÑO RESPONSIVO (TELÉFONOS Y TABLETAS)
+   ----------------------------------------------------------------------------- */
+@media (max-width: 991.98px) {
+  .mode-tabs,
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stepper-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  .step-card {
+    padding: 1.25rem;
+  }
+
+  .summary-row {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .step-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .step-actions .btn {
+    width: 100%;
+  }
+
+  .brand-title {
+    font-size: 1.35rem;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   15. ESTILOS DE IMPRESIÓN LIMPIA PARA EL COMPROBANTE DE CITA
+   ----------------------------------------------------------------------------- */
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+
+  html {
+    font-size: 14px !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .no-print,
+  .skip-link,
+  .a11y-bar,
+  .mode-switcher,
+  .stepper-card,
+  .site-footer,
+  .modal {
+    display: none !important;
+  }
+
+  .site-header {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-bottom: 3px solid #002b5c !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  .brand-emblem {
+    border-color: #002b5c !important;
+    color: #002b5c !important;
+    background: #ffffff !important;
+  }
+
+  .brand-title,
+  .brand-institution,
+  .header-contact-label,
+  .header-phone-link,
+  .header-address-text {
+    color: #000000 !important;
+  }
+
+  .header-contact-box {
+    background: #ffffff !important;
+    border: 1px solid #000000 !important;
+  }
+
+  .step-card,
+  .receipt-card,
+  .summary-card,
+  .folio-highlight-box,
+  .arrival-instructions-box {
+    box-shadow: none !important;
+    border-color: #000000 !important;
+    background: #ffffff !important;
+    break-inside: avoid;
+  }
+
+  .receipt-banner {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+  }
+
+  .receipt-check-circle {
+    border: 2px solid #000000 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .folio-number {
+    color: #000000 !important;
+    font-size: 26pt !important;
+  }
+}
