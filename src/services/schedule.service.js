@@ -11,12 +11,6 @@ const { AppError } = require('../middleware/error.middleware');
 const { isValidDateString } = require('../validators/appointment.validator');
 const { logAuditEvent } = require('./audit.service');
 
-/**
- * Devuelve la fecha local actual del servidor en formato `AAAA-MM-DD`.
- * Se usa fecha local (y no UTC) para evitar desfases al final del día en México.
- *
- * @returns {string}
- */
 function getTodayDateString() {
   const now = new Date();
   const year = now.getFullYear();
@@ -25,24 +19,11 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
-/**
- * Convierte `AAAA-MM-DD` a un objeto Date en medianoche local.
- *
- * @param {string} dateStr
- * @returns {Date}
- */
 function parseLocalDate(dateStr) {
   const [year, month, day] = dateStr.split('-').map(Number);
   return new Date(year, month - 1, day);
 }
 
-/**
- * Calcula cuántos días de diferencia hay entre `dateStr` y el día de hoy local.
- * Negativo = pasado, 0 = hoy, positivo = futuro.
- *
- * @param {string} dateStr
- * @returns {number}
- */
 function diffDaysFromToday(dateStr) {
   const today = parseLocalDate(getTodayDateString());
   const target = parseLocalDate(dateStr);
@@ -50,48 +31,21 @@ function diffDaysFromToday(dateStr) {
   return Math.round((target.getTime() - today.getTime()) / msPerDay);
 }
 
-/**
- * Obtiene el día de la semana (`0` = Domingo ... `6` = Sábado) de una fecha `AAAA-MM-DD`.
- *
- * @param {string} dateStr
- * @returns {number}
- */
 function getDayOfWeek(dateStr) {
   return parseLocalDate(dateStr).getDay();
 }
 
-/**
- * Convierte `HH:MM` en minutos totales desde las 00:00.
- *
- * @param {string} hhmm
- * @returns {number}
- */
 function timeToMinutes(hhmm) {
   const [hours, minutes] = hhmm.split(':').map(Number);
   return hours * 60 + minutes;
 }
 
-/**
- * Convierte minutos desde las 00:00 a formato `HH:MM`.
- *
- * @param {number} totalMinutes
- * @returns {string}
- */
 function minutesToTime(totalMinutes) {
   const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
   const minutes = String(totalMinutes % 60).padStart(2, '0');
   return `${hours}:${minutes}`;
 }
 
-/**
- * Genera la lista de horarios de inicio dentro de `[startTime, endTime]`
- * garantizando que cada bloque termine antes o exactamente a `endTime`.
- *
- * @param {string} startTime
- * @param {string} endTime
- * @param {number} slotMinutes
- * @returns {string[]}
- */
 function generateTimeSlots(startTime, endTime, slotMinutes) {
   const start = timeToMinutes(startTime);
   const end = timeToMinutes(endTime);
@@ -106,18 +60,18 @@ function generateTimeSlots(startTime, endTime, slotMinutes) {
 
 function mapRuleRow(row) {
   return {
-    dayOfWeek: row.day_of_week,
+    dayOfWeek: Number(row.day_of_week),
     isOpen: Boolean(row.is_open),
-    startTime: row.start_time,
-    endTime: row.end_time,
-    slotMinutes: row.slot_minutes,
-    capacityPerSlot: row.capacity_per_slot,
+    startTime: String(row.start_time).slice(0, 5),
+    endTime: String(row.end_time).slice(0, 5),
+    slotMinutes: Number(row.slot_minutes),
+    capacityPerSlot: Number(row.capacity_per_slot),
   };
 }
 
 function mapBlockedDateRow(row) {
   return {
-    id: row.id,
+    id: Number(row.id),
     blockedDate: row.blocked_date,
     blockedTime: row.blocked_time || '',
     reason: row.reason,
@@ -127,56 +81,39 @@ function mapBlockedDateRow(row) {
 
 function mapServiceRow(row) {
   return {
-    id: row.id,
+    id: Number(row.id),
     name: row.name,
     description: row.description,
     icon: row.icon,
-    durationMinutes: row.duration_minutes,
+    durationMinutes: Number(row.duration_minutes),
     active: Boolean(row.active),
   };
 }
 
-/**
- * Devuelve la configuración completa de agenda para el panel de administrador:
- * reglas de los 7 días, bloqueos registrados y todos los servicios (activos e inactivos).
- *
- * @param {import('node:sqlite').DatabaseSync} db
- */
-function getScheduleConfig(db) {
-  const rules = db
-    .prepare('SELECT * FROM schedule_rules ORDER BY day_of_week ASC')
-    .all()
-    .map(mapRuleRow);
+async function getScheduleConfig(db) {
+  const rules = (
+    await db.all('SELECT * FROM schedule_rules ORDER BY day_of_week ASC')
+  ).map(mapRuleRow);
 
-  const blockedDates = db
-    .prepare('SELECT * FROM blocked_dates ORDER BY blocked_date ASC, blocked_time ASC')
-    .all()
-    .map(mapBlockedDateRow);
+  const blockedDates = (
+    await db.all('SELECT * FROM blocked_dates ORDER BY blocked_date ASC, blocked_time ASC')
+  ).map(mapBlockedDateRow);
 
-  const services = db
-    .prepare('SELECT * FROM services ORDER BY id ASC')
-    .all()
-    .map(mapServiceRow);
+  const services = (
+    await db.all('SELECT * FROM services ORDER BY id ASC')
+  ).map(mapServiceRow);
 
   return { rules, blockedDates, services };
 }
 
-/**
- * Devuelve la configuración pública para el portal de citas: datos del hospital,
- * especies atendidas, servicios activos, reglas de horario y anticipación máxima.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- */
-function getPublicConfig(db) {
-  const rules = db
-    .prepare('SELECT * FROM schedule_rules ORDER BY day_of_week ASC')
-    .all()
-    .map(mapRuleRow);
+async function getPublicConfig(db) {
+  const rules = (
+    await db.all('SELECT * FROM schedule_rules ORDER BY day_of_week ASC')
+  ).map(mapRuleRow);
 
-  const services = db
-    .prepare('SELECT * FROM services WHERE active = 1 ORDER BY id ASC')
-    .all()
-    .map(mapServiceRow);
+  const services = (
+    await db.all('SELECT * FROM services WHERE active = 1 ORDER BY id ASC')
+  ).map(mapServiceRow);
 
   return {
     hospital: HOSPITAL_INFO,
@@ -187,21 +124,7 @@ function getPublicConfig(db) {
   };
 }
 
-/**
- * Calcula la disponibilidad detallada de cada franja horaria para una fecha dada.
- *
- * Reglas evaluadas:
- * 1. Rechaza fechas con formato inválido, fechas pasadas o que superen `maxDaysAhead`.
- * 2. Verifica si el hospital abre ese día de la semana (`schedule_rules`).
- * 3. Verifica si existe un bloqueo de día completo o por horario (`blocked_dates`).
- * 4. Descuenta las citas activas (`pendiente` o `confirmada`) de la capacidad por bloque.
- * 5. Si la fecha es hoy, marca como no disponibles los horarios cuya hora ya transcurrió.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {string} dateStr Fecha en formato `AAAA-MM-DD`.
- * @returns {{ date: string, isOpen: boolean, dayBlocked: boolean, blockReason: string, slots: Array<{ time: string, available: number, capacity: number, isAvailable: boolean, reason: string }> }}
- */
-function getAvailabilityForDate(db, dateStr) {
+async function getAvailabilityForDate(db, dateStr) {
   if (!isValidDateString(dateStr)) {
     throw new AppError(
       'La fecha proporcionada no es válida. Usa el formato AAAA-MM-DD.',
@@ -232,9 +155,7 @@ function getAvailabilityForDate(db, dateStr) {
   }
 
   const dayOfWeek = getDayOfWeek(dateStr);
-  const rule = db
-    .prepare('SELECT * FROM schedule_rules WHERE day_of_week = ?')
-    .get(dayOfWeek);
+  const rule = await db.get('SELECT * FROM schedule_rules WHERE day_of_week = ?', [dayOfWeek]);
 
   if (!rule || !rule.is_open) {
     return {
@@ -246,9 +167,10 @@ function getAvailabilityForDate(db, dateStr) {
     };
   }
 
-  const blocks = db
-    .prepare('SELECT blocked_time, reason FROM blocked_dates WHERE blocked_date = ?')
-    .all(dateStr);
+  const blocks = await db.all(
+    'SELECT blocked_time, reason FROM blocked_dates WHERE blocked_date = ?',
+    [dateStr]
+  );
 
   const fullDayBlock = blocks.find((b) => !b.blocked_time || b.blocked_time === '');
   if (fullDayBlock) {
@@ -264,32 +186,34 @@ function getAvailabilityForDate(db, dateStr) {
   const slotBlocksMap = new Map();
   for (const block of blocks) {
     if (block.blocked_time) {
-      slotBlocksMap.set(block.blocked_time, block.reason);
+      slotBlocksMap.set(String(block.blocked_time).slice(0, 5), block.reason);
     }
   }
 
-  // Contar citas activas (pendientes o confirmadas) que ocupan cupo ese día
-  const counts = db
-    .prepare(`
-      SELECT appointment_time, COUNT(*) AS booked
-      FROM appointments
-      WHERE appointment_date = ?
-        AND status IN ('pendiente', 'confirmada')
-      GROUP BY appointment_time
-    `)
-    .all(dateStr);
+  const counts = await db.all(
+    `SELECT appointment_time, COUNT(*) AS booked
+     FROM appointments
+     WHERE appointment_date = ?
+       AND status IN ('pendiente', 'confirmada')
+     GROUP BY appointment_time`,
+    [dateStr]
+  );
 
   const bookedMap = new Map();
   for (const row of counts) {
-    bookedMap.set(row.appointment_time, Number(row.booked));
+    bookedMap.set(String(row.appointment_time).slice(0, 5), Number(row.booked));
   }
 
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const isToday = diffDays === 0;
 
-  const times = generateTimeSlots(rule.start_time, rule.end_time, rule.slot_minutes);
-  const capacity = rule.capacity_per_slot;
+  const times = generateTimeSlots(
+    String(rule.start_time).slice(0, 5),
+    String(rule.end_time).slice(0, 5),
+    Number(rule.slot_minutes)
+  );
+  const capacity = Number(rule.capacity_per_slot);
 
   const slots = times.map((time) => {
     const blockedReason = slotBlocksMap.get(time);
@@ -303,7 +227,6 @@ function getAvailabilityForDate(db, dateStr) {
       };
     }
 
-    // Si es hoy, no permitir agendar horarios cuya hora de inicio ya pasó
     if (isToday && timeToMinutes(time) <= currentMinutes) {
       return {
         time,
@@ -345,41 +268,43 @@ function getAvailabilityForDate(db, dateStr) {
   };
 }
 
-/**
- * Actualiza de manera atómica las 7 reglas semanales de horario del hospital.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {Array<{ dayOfWeek: number, isOpen: boolean, startTime: string, endTime: string, slotMinutes: number, capacityPerSlot: number }>} rules
- * @param {string} actor
- * @param {string} [ipAddress='']
- */
-function updateScheduleRules(db, rules, actor, ipAddress = '') {
-  withTransaction(db, () => {
-    const stmt = db.prepare(`
-      INSERT INTO schedule_rules (
-        day_of_week, is_open, start_time, end_time, slot_minutes, capacity_per_slot
-      )
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(day_of_week) DO UPDATE SET
-        is_open = excluded.is_open,
-        start_time = excluded.start_time,
-        end_time = excluded.end_time,
-        slot_minutes = excluded.slot_minutes,
-        capacity_per_slot = excluded.capacity_per_slot
-    `);
+async function updateScheduleRules(db, rules, actor, ipAddress = '') {
+  await withTransaction(db, async (tx) => {
+    const upsertSql =
+      tx.dialect === 'mysql'
+        ? `INSERT INTO schedule_rules (
+             day_of_week, is_open, start_time, end_time, slot_minutes, capacity_per_slot
+           )
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             is_open = VALUES(is_open),
+             start_time = VALUES(start_time),
+             end_time = VALUES(end_time),
+             slot_minutes = VALUES(slot_minutes),
+             capacity_per_slot = VALUES(capacity_per_slot)`
+        : `INSERT INTO schedule_rules (
+             day_of_week, is_open, start_time, end_time, slot_minutes, capacity_per_slot
+           )
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(day_of_week) DO UPDATE SET
+             is_open = excluded.is_open,
+             start_time = excluded.start_time,
+             end_time = excluded.end_time,
+             slot_minutes = excluded.slot_minutes,
+             capacity_per_slot = excluded.capacity_per_slot`;
 
     for (const rule of rules) {
-      stmt.run(
+      await tx.run(upsertSql, [
         rule.dayOfWeek,
         rule.isOpen ? 1 : 0,
         rule.startTime,
         rule.endTime,
         rule.slotMinutes,
-        rule.capacityPerSlot
-      );
+        rule.capacityPerSlot,
+      ]);
     }
 
-    logAuditEvent(db, {
+    await logAuditEvent(tx, {
       eventType: 'SCHEDULE_RULES_UPDATED',
       actor,
       ipAddress,
@@ -387,46 +312,37 @@ function updateScheduleRules(db, rules, actor, ipAddress = '') {
     });
   });
 
-  return db
-    .prepare('SELECT * FROM schedule_rules ORDER BY day_of_week ASC')
-    .all()
-    .map(mapRuleRow);
+  return (await db.all('SELECT * FROM schedule_rules ORDER BY day_of_week ASC')).map(mapRuleRow);
 }
 
-/**
- * Agrega un bloqueo de día completo (`blockedTime = ''`) o de una franja específica.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {{ blockedDate: string, blockedTime?: string, reason: string }} payload
- * @param {string} actor
- * @param {string} [ipAddress='']
- */
-function addBlockedDate(db, { blockedDate, blockedTime = '', reason }, actor, ipAddress = '') {
+async function addBlockedDate(db, { blockedDate, blockedTime = '', reason }, actor, ipAddress = '') {
   const nowIso = new Date().toISOString();
   const normalizedTime = blockedTime || '';
 
   try {
-    const info = db
-      .prepare(`
-        INSERT INTO blocked_dates (blocked_date, blocked_time, reason, created_at)
-        VALUES (?, ?, ?, ?)
-      `)
-      .run(blockedDate, normalizedTime, reason, nowIso);
+    const info = await db.run(
+      `INSERT INTO blocked_dates (blocked_date, blocked_time, reason, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [blockedDate, normalizedTime, reason, nowIso]
+    );
 
-    logAuditEvent(db, {
+    await logAuditEvent(db, {
       eventType: 'SCHEDULE_BLOCK_ADDED',
       actor,
       ipAddress,
       details: `Bloqueo ${blockedDate}${normalizedTime ? ` ${normalizedTime}` : ' (día completo)'}: ${reason}`,
     });
 
-    const created = db
-      .prepare('SELECT * FROM blocked_dates WHERE id = ?')
-      .get(info.lastInsertRowid);
-
+    const created = await db.get('SELECT * FROM blocked_dates WHERE id = ?', [
+      info.lastInsertRowid,
+    ]);
     return mapBlockedDateRow(created);
   } catch (err) {
-    if (String(err?.message || '').includes('UNIQUE')) {
+    if (
+      err?.code === 'ER_DUP_ENTRY' ||
+      String(err?.message || '').includes('UNIQUE') ||
+      String(err?.message || '').includes('Duplicate entry')
+    ) {
       throw new AppError(
         'Esa fecha u horario ya se encuentra bloqueado actualmente.',
         409
@@ -436,23 +352,15 @@ function addBlockedDate(db, { blockedDate, blockedTime = '', reason }, actor, ip
   }
 }
 
-/**
- * Elimina un bloqueo de fecha u horario existente por su identificador.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {number} id
- * @param {string} actor
- * @param {string} [ipAddress='']
- */
-function removeBlockedDate(db, id, actor, ipAddress = '') {
-  const existing = db.prepare('SELECT * FROM blocked_dates WHERE id = ?').get(id);
+async function removeBlockedDate(db, id, actor, ipAddress = '') {
+  const existing = await db.get('SELECT * FROM blocked_dates WHERE id = ?', [id]);
   if (!existing) {
     throw new AppError('El bloqueo indicado no existe.', 404);
   }
 
-  db.prepare('DELETE FROM blocked_dates WHERE id = ?').run(id);
+  await db.run('DELETE FROM blocked_dates WHERE id = ?', [id]);
 
-  logAuditEvent(db, {
+  await logAuditEvent(db, {
     eventType: 'SCHEDULE_BLOCK_REMOVED',
     actor,
     ipAddress,
@@ -462,44 +370,36 @@ function removeBlockedDate(db, id, actor, ipAddress = '') {
   return mapBlockedDateRow(existing);
 }
 
-/**
- * Actualiza los atributos editables de un servicio veterinario.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {number} id
- * @param {{ active?: boolean, description?: string, durationMinutes?: number }} payload
- * @param {string} actor
- * @param {string} [ipAddress='']
- */
-function updateService(db, id, payload, actor, ipAddress = '') {
-  const existing = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+async function updateService(db, id, payload, actor, ipAddress = '') {
+  const existing = await db.get('SELECT * FROM services WHERE id = ?', [id]);
   if (!existing) {
     throw new AppError('El servicio veterinario indicado no existe.', 404);
   }
 
   const nextActive =
-    payload.active !== undefined ? (payload.active ? 1 : 0) : existing.active;
+    payload.active !== undefined ? (payload.active ? 1 : 0) : Number(existing.active);
   const nextDescription =
     payload.description !== undefined ? payload.description : existing.description;
   const nextDuration =
     payload.durationMinutes !== undefined
       ? payload.durationMinutes
-      : existing.duration_minutes;
+      : Number(existing.duration_minutes);
 
-  db.prepare(`
-    UPDATE services
-    SET active = ?, description = ?, duration_minutes = ?
-    WHERE id = ?
-  `).run(nextActive, nextDescription, nextDuration, id);
+  await db.run(
+    `UPDATE services
+     SET active = ?, description = ?, duration_minutes = ?
+     WHERE id = ?`,
+    [nextActive, nextDescription, nextDuration, id]
+  );
 
-  logAuditEvent(db, {
+  await logAuditEvent(db, {
     eventType: 'SERVICE_UPDATED',
     actor,
     ipAddress,
     details: `Servicio "${existing.name}" actualizado (activo=${Boolean(nextActive)}, duración=${nextDuration} min).`,
   });
 
-  const updated = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+  const updated = await db.get('SELECT * FROM services WHERE id = ?', [id]);
   return mapServiceRow(updated);
 }
 

@@ -48,13 +48,6 @@ const {
 } = require('../services/appointment.service');
 const { getRecentAuditLogs } = require('../services/audit.service');
 
-/**
- * Parsea un parámetro `:id` exigiendo un entero positivo válido.
- *
- * @param {string} rawId
- * @param {string} label Nombre legible del recurso para el mensaje de error.
- * @returns {number}
- */
 function parsePositiveId(rawId, label = 'registro') {
   if (!/^\d+$/.test(String(rawId || ''))) {
     throw new AppError(`El identificador de ${label} no es válido.`, 400);
@@ -70,22 +63,11 @@ function getClientIp(req) {
   return req.ip || req.socket?.remoteAddress || '';
 }
 
-/**
- * Construye el router de administración.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {{ timeoutMinutes: number, limiters: { loginLimiter: import('express').RequestHandler } }} config
- * @returns {import('express').Router}
- */
 function createAdminRouter(db, { timeoutMinutes, limiters }) {
   const router = express.Router();
   const requireAuth = requireAdminAuth(db, timeoutMinutes);
   const maxIdleMs = Math.max(1, Number(timeoutMinutes)) * 60 * 1000;
 
-  /**
-   * GET /api/admin/csrf-token
-   * Devuelve el token CSRF ligado a la sesión actual (creándolo si no existe).
-   */
   router.get('/csrf-token', (req, res, next) => {
     try {
       const csrfToken = ensureCsrfToken(req);
@@ -95,28 +77,23 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * GET /api/admin/session
-   * Informa el estado de sesión actual, si la cuenta única está configurada y el token CSRF.
-   */
-  router.get('/session', (req, res, next) => {
+  router.get('/session', async (req, res, next) => {
     try {
       const csrfToken = ensureCsrfToken(req);
-      const adminConfigured = isAdminConfigured(db);
+      const adminConfigured = await isAdminConfigured(db);
       let authenticated = false;
 
       if (req.session.adminAuthenticated === true) {
         const now = Date.now();
         const lastActivity = Number(req.session.lastActivity || 0);
         const withinTimeout = Boolean(lastActivity && now - lastActivity <= maxIdleMs);
-        const sessionIsActive = validateActiveSession(db, req.sessionID);
+        const sessionIsActive = await validateActiveSession(db, req.sessionID);
 
         if (withinTimeout && sessionIsActive) {
           authenticated = true;
         } else {
-          // Limpiar bandera local si la sesión venció por inactividad o fue reemplazada
           if (!withinTimeout && sessionIsActive) {
-            clearActiveSession(
+            await clearActiveSession(
               db,
               req.sessionID,
               req.session.adminUsername || 'admin',
@@ -147,11 +124,6 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * POST /api/admin/login
-   * Autentica al administrador único. Regenera el ID de sesión ANTES de guardar
-   * `active_session_id` y rota el token CSRF para mitigar Session Fixation.
-   */
   router.post('/login', limiters.loginLimiter, verifyCsrf, (req, res, next) => {
     let parsed;
     try {
@@ -164,7 +136,7 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     const ipAddress = getClientIp(req);
 
     // Regenerar sesión para prevenir ataques de Session Fixation
-    return req.session.regenerate((regenErr) => {
+    return req.session.regenerate(async (regenErr) => {
       if (regenErr) {
         return next(
           new AppError('No fue posible iniciar una sesión segura. Intenta de nuevo.', 500)
@@ -172,7 +144,7 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
       }
 
       try {
-        const result = verifyAdminLogin(db, {
+        const result = await verifyAdminLogin(db, {
           username: parsed.username,
           password: parsed.password,
           sessionId: req.sessionID,
@@ -205,20 +177,15 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
           });
         });
       } catch (loginErr) {
-        // Conservamos el token CSRF vigente para permitir reintentar el formulario sin 403
         req.session.csrfToken = previousCsrfToken;
         return req.session.save(() => next(loginErr));
       }
     });
   });
 
-  /**
-   * POST /api/admin/logout
-   * Cierra la sesión actual, limpia `active_session_id` y elimina la cookie.
-   */
-  router.post('/logout', requireAuth, verifyCsrf, (req, res, next) => {
+  router.post('/logout', requireAuth, verifyCsrf, async (req, res, next) => {
     try {
-      clearActiveSession(
+      await clearActiveSession(
         db,
         req.sessionID,
         req.session.adminUsername,
@@ -242,14 +209,10 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * POST /api/admin/change-password
-   * Permite actualizar la contraseña del administrador único cumpliendo la política fuerte.
-   */
-  router.post('/change-password', requireAuth, verifyCsrf, (req, res, next) => {
+  router.post('/change-password', requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const parsed = changePasswordSchema.parse(req.body);
-      changeAdminPassword(db, {
+      await changeAdminPassword(db, {
         currentPassword: parsed.currentPassword,
         newPassword: parsed.newPassword,
         ipAddress: getClientIp(req),
@@ -266,26 +229,18 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * GET /api/admin/dashboard?date=YYYY-MM-DD
-   * Devuelve estadísticas y citas ordenadas cronológicamente para la fecha solicitada.
-   */
-  router.get('/dashboard', requireAuth, (req, res, next) => {
+  router.get('/dashboard', requireAuth, async (req, res, next) => {
     try {
-      const dashboard = getAdminDashboard(db, req.query.date);
+      const dashboard = await getAdminDashboard(db, req.query.date);
       res.json({ ok: true, data: dashboard });
     } catch (err) {
       next(err);
     }
   });
 
-  /**
-   * GET /api/admin/appointments?date=&status=&search=
-   * Lista citas aplicando filtros de fecha, estado o búsqueda libre.
-   */
-  router.get('/appointments', requireAuth, (req, res, next) => {
+  router.get('/appointments', requireAuth, async (req, res, next) => {
     try {
-      const appointments = listAdminAppointments(db, {
+      const appointments = await listAdminAppointments(db, {
         date: req.query.date,
         status: req.query.status,
         search: req.query.search,
@@ -296,15 +251,11 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * PATCH /api/admin/appointments/:id
-   * Actualiza estado, fecha, horario o notas internas de una cita.
-   */
-  router.patch('/appointments/:id', requireAuth, verifyCsrf, (req, res, next) => {
+  router.patch('/appointments/:id', requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const id = parsePositiveId(req.params.id, 'cita');
       const parsed = updateAppointmentSchema.parse(req.body);
-      const updated = updateAdminAppointment(
+      const updated = await updateAdminAppointment(
         db,
         id,
         parsed,
@@ -321,27 +272,19 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * GET /api/admin/schedule
-   * Devuelve las reglas semanales, bloqueos registrados y catálogo completo de servicios.
-   */
-  router.get('/schedule', requireAuth, (req, res, next) => {
+  router.get('/schedule', requireAuth, async (req, res, next) => {
     try {
-      const schedule = getScheduleConfig(db);
+      const schedule = await getScheduleConfig(db);
       res.json({ ok: true, data: schedule });
     } catch (err) {
       next(err);
     }
   });
 
-  /**
-   * PUT /api/admin/schedule/rules
-   * Actualiza la configuración semanal completa (los 7 días de la semana).
-   */
-  router.put('/schedule/rules', requireAuth, verifyCsrf, (req, res, next) => {
+  router.put('/schedule/rules', requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const parsed = scheduleRulesSchema.parse(req.body);
-      const rules = updateScheduleRules(
+      const rules = await updateScheduleRules(
         db,
         parsed.rules,
         req.session.adminUsername,
@@ -357,14 +300,10 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * POST /api/admin/schedule/blocks
-   * Crea un bloqueo de día completo o de un horario específico.
-   */
-  router.post('/schedule/blocks', requireAuth, verifyCsrf, (req, res, next) => {
+  router.post('/schedule/blocks', requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const parsed = blockDateSchema.parse(req.body);
-      const block = addBlockedDate(
+      const block = await addBlockedDate(
         db,
         parsed,
         req.session.adminUsername,
@@ -380,14 +319,10 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * DELETE /api/admin/schedule/blocks/:id
-   * Elimina un bloqueo previamente registrado.
-   */
-  router.delete('/schedule/blocks/:id', requireAuth, verifyCsrf, (req, res, next) => {
+  router.delete('/schedule/blocks/:id', requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const id = parsePositiveId(req.params.id, 'bloqueo');
-      const removed = removeBlockedDate(
+      const removed = await removeBlockedDate(
         db,
         id,
         req.session.adminUsername,
@@ -403,15 +338,11 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * PATCH /api/admin/services/:id
-   * Activa/desactiva un servicio o edita su descripción y duración estimada.
-   */
-  router.patch('/services/:id', requireAuth, verifyCsrf, (req, res, next) => {
+  router.patch('/services/:id', requireAuth, verifyCsrf, async (req, res, next) => {
     try {
       const id = parsePositiveId(req.params.id, 'servicio');
       const parsed = updateServiceSchema.parse(req.body);
-      const updated = updateService(
+      const updated = await updateService(
         db,
         id,
         parsed,
@@ -428,13 +359,9 @@ function createAdminRouter(db, { timeoutMinutes, limiters }) {
     }
   });
 
-  /**
-   * GET /api/admin/audit-logs?limit=50
-   * Consulta los eventos recientes de seguridad y administración.
-   */
-  router.get('/audit-logs', requireAuth, (req, res, next) => {
+  router.get('/audit-logs', requireAuth, async (req, res, next) => {
     try {
-      const logs = getRecentAuditLogs(db, req.query.limit);
+      const logs = await getRecentAuditLogs(db, req.query.limit);
       res.json({ ok: true, data: logs });
     } catch (err) {
       next(err);

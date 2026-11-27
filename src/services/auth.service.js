@@ -20,8 +20,7 @@ const { usernameSchema, strongPasswordSchema } = require('../validators/admin.va
 const { logAuditEvent } = require('./audit.service');
 
 /**
- * Compara dos cadenas en tiempo constante para evitar ataques de temporización
- * al verificar identificadores de sesión.
+ * Compara dos cadenas en tiempo constante para evitar ataques de temporización.
  *
  * @param {string} a
  * @param {string} b
@@ -42,66 +41,79 @@ function safeStringEqual(a, b) {
 /**
  * Indica si ya existe la cuenta única de administrador en la base de datos.
  *
- * @param {import('node:sqlite').DatabaseSync} db
- * @returns {boolean}
+ * @param {object} db
+ * @returns {Promise<boolean>}
  */
-function isAdminConfigured(db) {
-  const row = db.prepare('SELECT id FROM admin_account WHERE id = 1').get();
+async function isAdminConfigured(db) {
+  const row = await db.get('SELECT id FROM admin_account WHERE id = 1');
   return Boolean(row);
 }
 
 /**
  * Recupera la fila de la cuenta única de administrador (`id = 1`).
  *
- * @param {import('node:sqlite').DatabaseSync} db
- * @returns {Record<string, any> | null}
+ * @param {object} db
+ * @returns {Promise<Record<string, any> | null>}
  */
-function getAdminAccount(db) {
-  return (
-    db
-      .prepare(
-        `SELECT
-          id, username, password_hash, active_session_id,
-          failed_attempts, locked_until, updated_at
-        FROM admin_account
-        WHERE id = 1`
-      )
-      .get() || null
+async function getAdminAccount(db) {
+  return db.get(
+    `SELECT
+      id, username, password_hash, active_session_id,
+      failed_attempts, locked_until, updated_at
+    FROM admin_account
+    WHERE id = 1`
   );
 }
 
 /**
  * Crea o reemplaza la cuenta única de administrador (`id = 1`).
- * Se ejecuta desde `scripts/setup-admin.js` (o en pruebas automatizadas).
- * Al reconfigurar la cuenta se invalidan sesiones activas y bloqueos previos.
+ * Compatible con MySQL/MariaDB (`ON DUPLICATE KEY UPDATE`) y SQLite (`ON CONFLICT`).
  *
- * @param {import('node:sqlite').DatabaseSync} db
+ * @param {object} db
  * @param {string} username
  * @param {string} plainPassword
- * @returns {{ id: number, username: string, updatedAt: string }}
+ * @returns {Promise<{ id: number, username: string, updatedAt: string }>}
  */
-function upsertSingleAdmin(db, username, plainPassword) {
+async function upsertSingleAdmin(db, username, plainPassword) {
   const validUsername = usernameSchema.parse(username);
   const validPassword = strongPasswordSchema.parse(plainPassword);
 
-  const passwordHash = bcrypt.hashSync(validPassword, SECURITY_CONFIG.BCRYPT_ROUNDS);
+  const passwordHash = await bcrypt.hash(validPassword, SECURITY_CONFIG.BCRYPT_ROUNDS);
   const nowIso = new Date().toISOString();
 
-  db.prepare(`
-    INSERT INTO admin_account (
-      id, username, password_hash, active_session_id, failed_attempts, locked_until, updated_at
-    )
-    VALUES (1, ?, ?, NULL, 0, NULL, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      username = excluded.username,
-      password_hash = excluded.password_hash,
-      active_session_id = NULL,
-      failed_attempts = 0,
-      locked_until = NULL,
-      updated_at = excluded.updated_at
-  `).run(validUsername, passwordHash, nowIso);
+  if (db.dialect === 'mysql') {
+    await db.run(
+      `INSERT INTO admin_account (
+        id, username, password_hash, active_session_id, failed_attempts, locked_until, updated_at
+      )
+      VALUES (1, ?, ?, NULL, 0, NULL, ?)
+      ON DUPLICATE KEY UPDATE
+        username = VALUES(username),
+        password_hash = VALUES(password_hash),
+        active_session_id = NULL,
+        failed_attempts = 0,
+        locked_until = NULL,
+        updated_at = VALUES(updated_at)`,
+      [validUsername, passwordHash, nowIso]
+    );
+  } else {
+    await db.run(
+      `INSERT INTO admin_account (
+        id, username, password_hash, active_session_id, failed_attempts, locked_until, updated_at
+      )
+      VALUES (1, ?, ?, NULL, 0, NULL, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        username = excluded.username,
+        password_hash = excluded.password_hash,
+        active_session_id = NULL,
+        failed_attempts = 0,
+        locked_until = NULL,
+        updated_at = excluded.updated_at`,
+      [validUsername, passwordHash, nowIso]
+    );
+  }
 
-  logAuditEvent(db, {
+  await logAuditEvent(db, {
     eventType: 'ADMIN_ACCOUNT_CONFIGURED',
     actor: validUsername,
     details: 'Cuenta de administrador único creada o restablecida.',
@@ -118,12 +130,12 @@ function upsertSingleAdmin(db, username, plainPassword) {
  * Verifica las credenciales del administrador único y, si son válidas,
  * registra el nuevo `sessionId` como única sesión activa permitida.
  *
- * @param {import('node:sqlite').DatabaseSync} db
+ * @param {object} db
  * @param {{ username: string, password: string, sessionId: string, ipAddress?: string }} params
- * @returns {{ username: string, replacedPreviousSession: boolean }}
+ * @returns {Promise<{ username: string, replacedPreviousSession: boolean }>}
  */
-function verifyAdminLogin(db, { username, password, sessionId, ipAddress = '' }) {
-  const account = getAdminAccount(db);
+async function verifyAdminLogin(db, { username, password, sessionId, ipAddress = '' }) {
+  const account = await getAdminAccount(db);
 
   if (!account) {
     throw new AppError(
@@ -140,7 +152,7 @@ function verifyAdminLogin(db, { username, password, sessionId, ipAddress = '' })
     const lockUntilMs = Date.parse(account.locked_until);
     if (!Number.isNaN(lockUntilMs) && lockUntilMs > nowMs) {
       const remainingMinutes = Math.max(1, Math.ceil((lockUntilMs - nowMs) / 60000));
-      logAuditEvent(db, {
+      await logAuditEvent(db, {
         eventType: 'ADMIN_LOGIN_BLOCKED',
         actor: username || account.username,
         ipAddress,
@@ -153,29 +165,28 @@ function verifyAdminLogin(db, { username, password, sessionId, ipAddress = '' })
     }
   }
 
-  // Se ejecuta bcrypt.compareSync siempre (aunque el usuario no coincida) para
-  // evitar diferencias de tiempo que revelen si el nombre de usuario es correcto.
-  const passwordMatches = bcrypt.compareSync(password, account.password_hash);
+  // Se ejecuta bcrypt.compare siempre para evitar ataques de temporización
+  const passwordMatches = await bcrypt.compare(password, account.password_hash);
   const usernameMatches = safeStringEqual(username, account.username);
 
   if (!usernameMatches || !passwordMatches) {
-    // Si existía un bloqueo anterior ya vencido, reiniciamos el contador antes de sumar
     const lockExpired =
       account.locked_until && Date.parse(account.locked_until) <= nowMs;
-    const nextAttempts = (lockExpired ? 0 : account.failed_attempts) + 1;
+    const nextAttempts = (lockExpired ? 0 : Number(account.failed_attempts || 0)) + 1;
 
     if (nextAttempts >= SECURITY_CONFIG.MAX_FAILED_LOGIN_ATTEMPTS) {
       const lockedUntilIso = new Date(
         nowMs + SECURITY_CONFIG.LOCKOUT_MINUTES * 60 * 1000
       ).toISOString();
 
-      db.prepare(`
-        UPDATE admin_account
-        SET failed_attempts = ?, locked_until = ?, updated_at = ?
-        WHERE id = 1
-      `).run(nextAttempts, lockedUntilIso, nowIso);
+      await db.run(
+        `UPDATE admin_account
+         SET failed_attempts = ?, locked_until = ?, updated_at = ?
+         WHERE id = 1`,
+        [nextAttempts, lockedUntilIso, nowIso]
+      );
 
-      logAuditEvent(db, {
+      await logAuditEvent(db, {
         eventType: 'ADMIN_ACCOUNT_LOCKED',
         actor: username || account.username,
         ipAddress,
@@ -188,13 +199,14 @@ function verifyAdminLogin(db, { username, password, sessionId, ipAddress = '' })
       );
     }
 
-    db.prepare(`
-      UPDATE admin_account
-      SET failed_attempts = ?, locked_until = NULL, updated_at = ?
-      WHERE id = 1
-    `).run(nextAttempts, nowIso);
+    await db.run(
+      `UPDATE admin_account
+       SET failed_attempts = ?, locked_until = NULL, updated_at = ?
+       WHERE id = 1`,
+      [nextAttempts, nowIso]
+    );
 
-    logAuditEvent(db, {
+    await logAuditEvent(db, {
       eventType: 'ADMIN_LOGIN_FAILED',
       actor: username || 'desconocido',
       ipAddress,
@@ -204,18 +216,19 @@ function verifyAdminLogin(db, { username, password, sessionId, ipAddress = '' })
     throw new AppError('Usuario o contraseña incorrectos.', 401);
   }
 
-  // Credenciales válidas: se reemplaza cualquier sesión previa (sesión exclusiva)
+  // Credenciales válidas: reemplaza cualquier sesión previa (sesión única exclusiva)
   const replacedPreviousSession = Boolean(
     account.active_session_id && account.active_session_id !== sessionId
   );
 
-  db.prepare(`
-    UPDATE admin_account
-    SET active_session_id = ?, failed_attempts = 0, locked_until = NULL, updated_at = ?
-    WHERE id = 1
-  `).run(sessionId, nowIso);
+  await db.run(
+    `UPDATE admin_account
+     SET active_session_id = ?, failed_attempts = 0, locked_until = NULL, updated_at = ?
+     WHERE id = 1`,
+    [sessionId, nowIso]
+  );
 
-  logAuditEvent(db, {
+  await logAuditEvent(db, {
     eventType: 'ADMIN_LOGIN_SUCCESS',
     actor: account.username,
     ipAddress,
@@ -231,20 +244,17 @@ function verifyAdminLogin(db, { username, password, sessionId, ipAddress = '' })
 }
 
 /**
- * Comprueba que el `sessionId` actual coincida con la única sesión autorizada
- * registrada en `admin_account.active_session_id`.
+ * Comprueba que el `sessionId` actual coincida con la única sesión autorizada.
  *
- * @param {import('node:sqlite').DatabaseSync} db
+ * @param {object} db
  * @param {string} sessionId
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function validateActiveSession(db, sessionId) {
+async function validateActiveSession(db, sessionId) {
   if (!sessionId || typeof sessionId !== 'string') {
     return false;
   }
-  const row = db
-    .prepare('SELECT active_session_id FROM admin_account WHERE id = 1')
-    .get();
+  const row = await db.get('SELECT active_session_id FROM admin_account WHERE id = 1');
 
   if (!row || !row.active_session_id) {
     return false;
@@ -255,15 +265,14 @@ function validateActiveSession(db, sessionId) {
 
 /**
  * Limpia `active_session_id` solo si corresponde a la sesión que se está cerrando.
- * Evita que una sesión antigua que ya fue reemplazada cierre por error la nueva.
  *
- * @param {import('node:sqlite').DatabaseSync} db
+ * @param {object} db
  * @param {string} sessionId
  * @param {string} [username='admin']
  * @param {string} [ipAddress='']
  * @param {string} [reason='Cierre de sesión voluntario.']
  */
-function clearActiveSession(
+async function clearActiveSession(
   db,
   sessionId,
   username = 'admin',
@@ -271,14 +280,15 @@ function clearActiveSession(
   reason = 'Cierre de sesión voluntario.'
 ) {
   if (sessionId) {
-    db.prepare(`
-      UPDATE admin_account
-      SET active_session_id = NULL, updated_at = ?
-      WHERE id = 1 AND active_session_id = ?
-    `).run(new Date().toISOString(), sessionId);
+    await db.run(
+      `UPDATE admin_account
+       SET active_session_id = NULL, updated_at = ?
+       WHERE id = 1 AND active_session_id = ?`,
+      [new Date().toISOString(), sessionId]
+    );
   }
 
-  logAuditEvent(db, {
+  await logAuditEvent(db, {
     eventType: 'ADMIN_LOGOUT',
     actor: username || 'admin',
     ipAddress,
@@ -289,12 +299,12 @@ function clearActiveSession(
 /**
  * Cambia la contraseña del administrador único verificando primero la actual.
  *
- * @param {import('node:sqlite').DatabaseSync} db
+ * @param {object} db
  * @param {{ currentPassword: string, newPassword: string, ipAddress?: string }} params
- * @returns {{ username: string, updatedAt: string }}
+ * @returns {Promise<{ username: string, updatedAt: string }>}
  */
-function changeAdminPassword(db, { currentPassword, newPassword, ipAddress = '' }) {
-  const account = getAdminAccount(db);
+async function changeAdminPassword(db, { currentPassword, newPassword, ipAddress = '' }) {
+  const account = await getAdminAccount(db);
   if (!account) {
     throw new AppError(
       'La cuenta de administrador aún no ha sido configurada en el servidor.',
@@ -302,9 +312,9 @@ function changeAdminPassword(db, { currentPassword, newPassword, ipAddress = '' 
     );
   }
 
-  const currentMatches = bcrypt.compareSync(currentPassword, account.password_hash);
+  const currentMatches = await bcrypt.compare(currentPassword, account.password_hash);
   if (!currentMatches) {
-    logAuditEvent(db, {
+    await logAuditEvent(db, {
       eventType: 'ADMIN_PASSWORD_CHANGE_FAILED',
       actor: account.username,
       ipAddress,
@@ -314,16 +324,17 @@ function changeAdminPassword(db, { currentPassword, newPassword, ipAddress = '' 
   }
 
   const validNewPassword = strongPasswordSchema.parse(newPassword);
-  const newHash = bcrypt.hashSync(validNewPassword, SECURITY_CONFIG.BCRYPT_ROUNDS);
+  const newHash = await bcrypt.hash(validNewPassword, SECURITY_CONFIG.BCRYPT_ROUNDS);
   const nowIso = new Date().toISOString();
 
-  db.prepare(`
-    UPDATE admin_account
-    SET password_hash = ?, updated_at = ?
-    WHERE id = 1
-  `).run(newHash, nowIso);
+  await db.run(
+    `UPDATE admin_account
+     SET password_hash = ?, updated_at = ?
+     WHERE id = 1`,
+    [newHash, nowIso]
+  );
 
-  logAuditEvent(db, {
+  await logAuditEvent(db, {
     eventType: 'ADMIN_PASSWORD_CHANGED',
     actor: account.username,
     ipAddress,

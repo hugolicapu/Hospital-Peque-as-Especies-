@@ -1,7 +1,7 @@
 # Sistema de Citas y Panel de Administrador Único
 **Hospital de Pequeñas Especies · UNAM FES Cuautitlán (Campo 4)**
 
-Aplicación web modular compuesta por **dos páginas interconectadas** que comparten un mismo servidor y base de datos SQLite local:
+Aplicación web modular compuesta por **dos páginas interconectadas** que comparten un mismo servidor y base de datos **MySQL / MariaDB en XAMPP** (con respaldo automático compatible con SQLite para pruebas rápidas):
 
 1. **Página Pública de Citas (`/`):** Diseñada con **Bootstrap 5** priorizando la claridad, lectura cómoda y facilidad de uso para **personas mayores** (asistente paso a paso, botones grandes, alto contraste, ajuste de tamaño de letra `A- / A+ / A++` y comprobante imprimible).
 2. **Panel de Administrador Único (`/admin`):** Diseñado priorizando la **seguridad**, controlado estrictamente por **una sola persona** (sin registro público, sesión única exclusiva, cierre por inactividad, cifrado `bcrypt`, protección CSRF, bloqueo contra fuerza bruta y bitácora de auditoría).
@@ -14,7 +14,7 @@ Aplicación web modular compuesta por **dos páginas interconectadas** que compa
 flowchart LR
     Publico["Página Pública de Citas (/)"] <--> API["Servidor Express + Seguridad"]
     Admin["Panel Administrador Único (/admin)"] <--> API
-    API <--> DB[("Base de Datos SQLite local")]
+    API <--> DB[("Base de Datos MySQL / MariaDB (XAMPP)")]
 ```
 
 - Cuando un dueño/tutor **agenda o cancela una cita** en `/`, el cambio aparece de inmediato en `/admin` y el cupo horario se actualiza automáticamente.
@@ -24,8 +24,11 @@ flowchart LR
 
 ## Requisitos previos
 
-- **Node.js v22.0 o superior** (incluye soporte nativo de SQLite; no requiere instalar bases de datos externas ni compiladores).
+- **Node.js v22.0 o superior**.
+- **XAMPP (Apache + MariaDB/MySQL)** instalado en `C:\xampp` (para base de datos MySQL y visualización en `http://localhost/phpmyadmin`).
 - **Git** (para control de versiones).
+
+> Si alguna vez necesitas ejecutar el sistema sin XAMPP, basta con definir `DB_CLIENT=sqlite` en `.env` para usar SQLite integrado en Node.js.
 
 ---
 
@@ -129,8 +132,9 @@ Todo el código está dividido por responsabilidades y comentado internamente en
 │   ├── config/
 │   │   └── constants.js             # Datos institucionales UNAM FESC y parámetros base
 │   ├── db/
-│   │   ├── database.js              # Conexión SQLite (node:sqlite), WAL y transacciones
-│   │   └── schema.sql               # Esquema SQL comentado de todas las tablas
+│   │   ├── database.js              # Adaptador unificado MySQL/XAMPP (mysql2) y SQLite
+│   │   ├── schema.mysql.sql         # Esquema MySQL/MariaDB (InnoDB, utf8mb4, CHECK id = 1)
+│   │   └── schema.sql               # Esquema SQLite equivalente (para pruebas/respaldo)
 │   ├── middleware/
 │   │   ├── auth.middleware.js       # Verifica sesión activa exclusiva y timeout
 │   │   ├── csrf.middleware.js       # Generación y verificación de token X-CSRF-Token

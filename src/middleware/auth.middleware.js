@@ -17,10 +17,10 @@ const {
 } = require('../services/auth.service');
 
 /**
- * Crea el middleware de autenticación administrativa ligado a una base de datos
+ * Crea el middleware de autenticación administrativa ligado a la base de datos
  * y a un tiempo máximo de inactividad configurable.
  *
- * @param {import('node:sqlite').DatabaseSync} db
+ * @param {object} db Adaptador unificado (MySQL/XAMPP o SQLite).
  * @param {number} [timeoutMinutes=15] Minutos máximos de inactividad permitidos.
  * @returns {import('express').RequestHandler}
  */
@@ -30,56 +30,61 @@ function requireAdminAuth(
 ) {
   const maxIdleMs = Math.max(1, Number(timeoutMinutes)) * 60 * 1000;
 
-  return function adminAuthMiddleware(req, res, next) {
-    if (!req.session || req.session.adminAuthenticated !== true) {
-      return res.status(401).json({
-        ok: false,
-        error: 'Debes iniciar sesión como administrador para acceder a este recurso.',
-      });
-    }
-
-    const now = Date.now();
-    const lastActivity = Number(req.session.lastActivity || 0);
-
-    // Verificar expiración por inactividad
-    if (!lastActivity || now - lastActivity > maxIdleMs) {
-      const username = req.session.adminUsername || 'admin';
-      const sessionId = req.sessionID;
-      const ipAddress = req.ip || req.socket?.remoteAddress || '';
-
-      clearActiveSession(
-        db,
-        sessionId,
-        username,
-        ipAddress,
-        'Sesión cerrada automáticamente por inactividad.'
-      );
-
-      return req.session.destroy(() => {
-        res.clearCookie('fesc_admin.sid');
-        res.status(401).json({
+  return async function adminAuthMiddleware(req, res, next) {
+    try {
+      if (!req.session || req.session.adminAuthenticated !== true) {
+        return res.status(401).json({
           ok: false,
-          error:
-            'Tu sesión expiró por inactividad. Por seguridad, inicia sesión nuevamente.',
+          error: 'Debes iniciar sesión como administrador para acceder a este recurso.',
         });
-      });
-    }
+      }
 
-    // Verificar que esta sesión siga siendo la única activa en base de datos
-    if (!validateActiveSession(db, req.sessionID)) {
-      return req.session.destroy(() => {
-        res.clearCookie('fesc_admin.sid');
-        res.status(401).json({
-          ok: false,
-          error:
-            'Tu sesión fue cerrada porque se inició sesión desde otro navegador o dispositivo.',
+      const now = Date.now();
+      const lastActivity = Number(req.session.lastActivity || 0);
+
+      // Verificar expiración por inactividad
+      if (!lastActivity || now - lastActivity > maxIdleMs) {
+        const username = req.session.adminUsername || 'admin';
+        const sessionId = req.sessionID;
+        const ipAddress = req.ip || req.socket?.remoteAddress || '';
+
+        await clearActiveSession(
+          db,
+          sessionId,
+          username,
+          ipAddress,
+          'Sesión cerrada automáticamente por inactividad.'
+        );
+
+        return req.session.destroy(() => {
+          res.clearCookie('fesc_admin.sid');
+          res.status(401).json({
+            ok: false,
+            error:
+              'Tu sesión expiró por inactividad. Por seguridad, inicia sesión nuevamente.',
+          });
         });
-      });
-    }
+      }
 
-    // Renovar marca de última actividad tras superar todas las validaciones
-    req.session.lastActivity = now;
-    return next();
+      // Verificar que esta sesión siga siendo la única activa en base de datos
+      const isValidSession = await validateActiveSession(db, req.sessionID);
+      if (!isValidSession) {
+        return req.session.destroy(() => {
+          res.clearCookie('fesc_admin.sid');
+          res.status(401).json({
+            ok: false,
+            error:
+              'Tu sesión fue cerrada porque se inició sesión desde otro navegador o dispositivo.',
+          });
+        });
+      }
+
+      // Renovar marca de última actividad tras superar todas las validaciones
+      req.session.lastActivity = now;
+      return next();
+    } catch (err) {
+      return next(err);
+    }
   };
 }
 

@@ -3,10 +3,7 @@
  * @description Fábrica principal de la aplicación Express (`createApp`).
  * Configura encabezados de seguridad estrictos (Helmet + CSP `'self'`),
  * sesiones HTTP endurecidas, archivos estáticos locales (Bootstrap 5 y `public/`),
- * routers públicos/administrativos y manejo centralizado de errores.
- *
- * Separar `createApp()` de `src/server.js` permite instanciar la aplicación
- * limpiamente en pruebas de integración con bases SQLite `:memory:`.
+ * conexión a MySQL/MariaDB (XAMPP) o SQLite, routers y manejo de errores.
  */
 
 const crypto = require('node:crypto');
@@ -32,20 +29,27 @@ const BOOTSTRAP_ICONS_DIR = path.join(
 );
 
 /**
- * Crea y configura la instancia Express junto con su conexión a SQLite.
+ * Crea y configura de forma asíncrona la instancia Express junto con la BD.
  *
  * @param {{
+ *   dbClient?: 'mysql' | 'sqlite',
  *   dbPath?: string,
+ *   dbConfig?: object,
  *   sessionSecret?: string,
  *   sessionTimeoutMinutes?: number,
  *   disableRateLimit?: boolean,
  *   trustProxy?: boolean
  * }} [options={}]
- * @returns {{ app: import('express').Express, db: import('node:sqlite').DatabaseSync }}
+ * @returns {Promise<{ app: import('express').Express, db: object }>}
  */
-function createApp(options = {}) {
-  const dbPath = options.dbPath || process.env.DB_PATH || './data/hospital_fesc.db';
-  const db = initDatabase(dbPath);
+async function createApp(options = {}) {
+  const dbOptions = options.dbConfig
+    ? { client: options.dbClient || 'mysql', ...options.dbConfig }
+    : options.dbPath
+      ? { client: 'sqlite', dbPath: options.dbPath }
+      : { client: options.dbClient || process.env.DB_CLIENT || 'mysql' };
+
+  const db = await initDatabase(dbOptions);
 
   const isProduction = process.env.NODE_ENV === 'production';
   const sessionSecret =
@@ -57,20 +61,18 @@ function createApp(options = {}) {
     options.sessionTimeoutMinutes ??
     process.env.ADMIN_SESSION_TIMEOUT_MINUTES ??
     SECURITY_CONFIG.DEFAULT_SESSION_TIMEOUT_MINUTES;
-  const sessionTimeoutMinutes = Number.isFinite(Number(rawTimeout)) && Number(rawTimeout) > 0
-    ? Number(rawTimeout)
-    : SECURITY_CONFIG.DEFAULT_SESSION_TIMEOUT_MINUTES;
+  const sessionTimeoutMinutes =
+    Number.isFinite(Number(rawTimeout)) && Number(rawTimeout) > 0
+      ? Number(rawTimeout)
+      : SECURITY_CONFIG.DEFAULT_SESSION_TIMEOUT_MINUTES;
 
   const app = express();
-
-  // Ocultar tecnología del servidor (evita exponer Express en cabeceras HTTP)
   app.disable('x-powered-by');
 
   if (options.trustProxy || process.env.TRUST_PROXY === 'true') {
     app.set('trust proxy', 1);
   }
 
-  // Política CSP estricta: sin scripts inline ni CDN externos (todo se sirve desde 'self')
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -91,10 +93,8 @@ function createApp(options = {}) {
     })
   );
 
-  // Limitar tamaño máximo del cuerpo JSON para mitigar abuso de memoria
   app.use(express.json({ limit: '50kb' }));
 
-  // Sesión administrativa basada en cookie HttpOnly + SameSite Strict
   app.use(
     session({
       name: 'fesc_admin.sid',
@@ -106,21 +106,18 @@ function createApp(options = {}) {
         httpOnly: true,
         sameSite: 'strict',
         secure: isProduction,
-        maxAge: 8 * 60 * 60 * 1000, // Tope absoluto 8h; la inactividad real la controla auth.middleware.js
+        maxAge: 8 * 60 * 60 * 1000,
       },
     })
   );
 
-  // Librerías locales de Bootstrap 5 y Bootstrap Icons (sin dependencias de CDN)
   app.use('/vendor/bootstrap', express.static(BOOTSTRAP_DIST_DIR));
   app.use('/vendor/bootstrap-icons', express.static(BOOTSTRAP_ICONS_DIR));
 
-  // Limitadores de tasa (pueden desactivarse únicamente en pruebas unitarias/integración)
   const limiters = createRateLimiters({
     disableRateLimit: Boolean(options.disableRateLimit),
   });
 
-  // Endpoints de API
   app.use('/api/public', createPublicRouter(db, limiters));
   app.use(
     '/api/admin',
@@ -130,13 +127,9 @@ function createApp(options = {}) {
     })
   );
 
-  // Cualquier ruta desconocida bajo /api devuelve 404 en formato JSON uniforme
   app.use('/api', notFoundHandler);
-
-  // Archivos estáticos del frontend (CSS, JS modular, imágenes)
   app.use(express.static(PUBLIC_DIR));
 
-  // Páginas HTML principales
   app.get('/', (req, res) => {
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   });
@@ -145,7 +138,6 @@ function createApp(options = {}) {
     res.sendFile(path.join(PUBLIC_DIR, 'admin.html'));
   });
 
-  // Manejo global de errores (Zod, AppError y errores internos seguros)
   app.use(errorHandler);
 
   return { app, db };

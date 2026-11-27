@@ -8,42 +8,42 @@
 /**
  * Inserta un nuevo evento en la tabla `audit_logs`.
  *
- * @param {import('node:sqlite').DatabaseSync} db
+ * @param {object} db Adaptador unificado de base de datos (MySQL/XAMPP o SQLite).
  * @param {{ eventType: string, actor: string, ipAddress?: string, details?: string | Record<string, unknown> }} event
  */
-function logAuditEvent(db, { eventType, actor, ipAddress = '', details = '' }) {
+async function logAuditEvent(db, { eventType, actor, ipAddress = '', details = '' }) {
   const serializedDetails =
     typeof details === 'string' ? details : JSON.stringify(details ?? '');
 
-  const stmt = db.prepare(`
-    INSERT INTO audit_logs (event_type, actor, ip_address, details, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-
-  stmt.run(
-    String(eventType || 'UNKNOWN_EVENT'),
-    String(actor || 'system'),
-    String(ipAddress || ''),
-    serializedDetails,
-    new Date().toISOString()
+  await db.run(
+    `INSERT INTO audit_logs (event_type, actor, ip_address, details, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      String(eventType || 'UNKNOWN_EVENT'),
+      String(actor || 'system'),
+      String(ipAddress || ''),
+      serializedDetails,
+      new Date().toISOString(),
+    ]
   );
 }
 
 /**
  * Obtiene los registros más recientes de la bitácora de auditoría.
  *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {number} [limit=50] Número máximo de eventos a devolver (acotado entre 1 y 200).
- * @returns {Array<{ id: number, eventType: string, actor: string, ipAddress: string, details: string, createdAt: string }>}
+ * @param {object} db
+ * @param {number|string} [limit=50] Número máximo de eventos a devolver (acotado entre 1 y 200).
+ * @returns {Promise<Array<{ id: number, eventType: string, actor: string, ipAddress: string, details: string, createdAt: string }>>}
  */
-function getRecentAuditLogs(db, limit = 50) {
+async function getRecentAuditLogs(db, limit = 50) {
   const parsedLimit = Number.parseInt(limit, 10);
   const safeLimit = Number.isNaN(parsedLimit)
     ? 50
     : Math.min(Math.max(parsedLimit, 1), 200);
 
-  const stmt = db.prepare(`
-    SELECT
+  // Nota: safeLimit ya fue validado como entero acotado [1..200] para compatibilidad estricta con MySQL prepared statements
+  return db.all(
+    `SELECT
       id,
       event_type AS eventType,
       actor,
@@ -52,10 +52,8 @@ function getRecentAuditLogs(db, limit = 50) {
       created_at AS createdAt
     FROM audit_logs
     ORDER BY id DESC
-    LIMIT ?
-  `);
-
-  return stmt.all(safeLimit);
+    LIMIT ${safeLimit}`
+  );
 }
 
 module.exports = {

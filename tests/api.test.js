@@ -96,7 +96,7 @@ function getNextWeekdayIso() {
 }
 
 test('Suite completa de integración, sincronización y seguridad Single-Admin', async (t) => {
-  const { app, db } = createApp({
+  const { app, db } = await createApp({
     dbPath: ':memory:',
     sessionSecret: 'secreto-de-pruebas-automatizadas-muy-largo-1234567890',
     sessionTimeoutMinutes: 15,
@@ -113,7 +113,7 @@ test('Suite completa de integración, sincronización y seguridad Single-Admin',
 
   t.after(async () => {
     await new Promise((resolve) => server.close(resolve));
-    if (db && typeof db.close === 'function') db.close();
+    if (db && typeof db.close === 'function') await db.close();
   });
 
   const publicClient = new TestClient(baseUrl);

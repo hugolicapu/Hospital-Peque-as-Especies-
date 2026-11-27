@@ -7,7 +7,7 @@ description: Convenciones, contratos de API, arquitectura modular, seguridad sin
 
 ## Stack Técnico
 - **Runtime:** Node.js v22+ (CommonJS en `src/`, ES Modules en `public/js/`).
-- **Base de datos:** SQLite nativo (`node:sqlite` `DatabaseSync`), esquema en `src/db/schema.sql`.
+- **Base de datos:** Adaptador asíncrono unificado en `src/db/database.js` (`mysql2/promise` hacia MariaDB de XAMPP por defecto con `src/db/schema.mysql.sql`, y SQLite `node:sqlite` con `src/db/schema.sql` para pruebas `:memory:` o `DB_CLIENT=sqlite`).
 - **Backend:** Express 4, Helmet, express-session, express-rate-limit, bcryptjs, zod, dotenv.
 - **Frontend:** Bootstrap 5.3 + Bootstrap Icons servidos localmente en `/vendor/bootstrap/` y `/vendor/bootstrap-icons/`.
 - **En Windows PowerShell:** Usar `npm.cmd` si `npm.ps1` está bloqueado por ExecutionPolicy.

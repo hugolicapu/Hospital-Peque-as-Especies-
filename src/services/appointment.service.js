@@ -1,7 +1,7 @@
 /**
  * @file src/services/appointment.service.js
  * @description Gestión del ciclo de vida de citas veterinarias:
- * - Creación pública atómica con protección contra doble reserva (`BEGIN IMMEDIATE`).
+ * - Creación pública atómica con protección contra doble reserva.
  * - Generación de folios únicos legibles `FESC-AAAAMMDD-XXXX` sin caracteres confusos.
  * - Consulta y cancelación pública verificando coincidencia de folio + teléfono.
  * - Tablero diario, búsqueda filtrada y edición/reprogramación para el administrador.
@@ -24,22 +24,12 @@ const {
 const { logAuditEvent } = require('./audit.service');
 
 /**
- * Alfabeto sin caracteres ambiguos (se excluyen 0, O, 1, I, L) para que
- * personas mayores o tutores leyendo por teléfono puedan dictar su folio sin errores.
+ * Alfabeto sin caracteres ambiguos (sin 0, O, 1, I, L) para facilitar lectura en voz alta.
  */
 const FOLIO_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
-/**
- * Genera un folio con el formato `FESC-AAAAMMDD-XXXX` verificando que no exista
- * en la tabla `appointments`.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {string} dateStr Fecha de la cita en formato `AAAA-MM-DD`.
- * @returns {string}
- */
-function generateUniqueFolio(db, dateStr) {
+async function generateUniqueFolio(db, dateStr) {
   const compactDate = dateStr.replace(/-/g, '');
-  const checkStmt = db.prepare('SELECT id FROM appointments WHERE folio = ?');
 
   for (let attempt = 0; attempt < 15; attempt += 1) {
     let suffix = '';
@@ -47,7 +37,8 @@ function generateUniqueFolio(db, dateStr) {
       suffix += FOLIO_ALPHABET[crypto.randomInt(0, FOLIO_ALPHABET.length)];
     }
     const candidate = `FESC-${compactDate}-${suffix}`;
-    if (!checkStmt.get(candidate)) {
+    const existing = await db.get('SELECT id FROM appointments WHERE folio = ?', [candidate]);
+    if (!existing) {
       return candidate;
     }
   }
@@ -58,21 +49,14 @@ function generateUniqueFolio(db, dateStr) {
   );
 }
 
-/**
- * Mapea una fila combinada de `appointments` + `services` al formato JSON del API.
- * Oculta `adminNotes` cuando la respuesta se entrega al público.
- *
- * @param {Record<string, any>} row
- * @param {{ includeAdminFields?: boolean }} [options]
- */
 function mapAppointmentRow(row, { includeAdminFields = false } = {}) {
   const mapped = {
-    id: row.id,
+    id: Number(row.id),
     folio: row.folio,
-    serviceId: row.service_id,
+    serviceId: Number(row.service_id),
     serviceName: row.service_name,
     date: row.appointment_date,
-    time: row.appointment_time,
+    time: String(row.appointment_time).slice(0, 5),
     ownerName: row.owner_name,
     ownerPhone: row.owner_phone,
     ownerEmail: row.owner_email || '',
@@ -115,19 +99,12 @@ const SELECT_APPOINTMENT_BASE = `
   INNER JOIN services s ON s.id = a.service_id
 `;
 
-/**
- * Registra una cita pública de forma atómica (`BEGIN IMMEDIATE`).
- * Revalida dentro de la transacción que el servicio esté activo, que la fecha
- * sea válida y que el horario aún tenga al menos 1 lugar disponible.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {Record<string, any>} payload Datos ya validados por `createAppointmentSchema`.
- */
-function createPublicAppointment(db, payload) {
-  return withTransaction(db, () => {
-    const service = db
-      .prepare('SELECT id, name, active FROM services WHERE id = ?')
-      .get(payload.serviceId);
+async function createPublicAppointment(db, payload) {
+  return withTransaction(db, async (tx) => {
+    const service = await tx.get(
+      'SELECT id, name, active FROM services WHERE id = ?',
+      [payload.serviceId]
+    );
 
     if (!service || !service.active) {
       throw new AppError(
@@ -136,7 +113,7 @@ function createPublicAppointment(db, payload) {
       );
     }
 
-    const availability = getAvailabilityForDate(db, payload.date);
+    const availability = await getAvailabilityForDate(tx, payload.date);
     if (!availability.isOpen || availability.dayBlocked) {
       throw new AppError(
         availability.blockReason || 'La fecha seleccionada no tiene atención disponible.',
@@ -160,21 +137,19 @@ function createPublicAppointment(db, payload) {
       );
     }
 
-    const folio = generateUniqueFolio(db, payload.date);
+    const folio = await generateUniqueFolio(tx, payload.date);
     const nowIso = new Date().toISOString();
     const normalizedPhone = normalizePhone(payload.ownerPhone);
 
-    const insertInfo = db
-      .prepare(`
-        INSERT INTO appointments (
-          folio, service_id, appointment_date, appointment_time,
-          owner_name, owner_phone, owner_email,
-          pet_name, pet_species, pet_age, reason_notes,
-          status, admin_notes, created_at, updated_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', '', ?, ?)
-      `)
-      .run(
+    const insertInfo = await tx.run(
+      `INSERT INTO appointments (
+        folio, service_id, appointment_date, appointment_time,
+        owner_name, owner_phone, owner_email,
+        pet_name, pet_species, pet_age, reason_notes,
+        status, admin_notes, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', '', ?, ?)`,
+      [
         folio,
         service.id,
         payload.date,
@@ -187,33 +162,27 @@ function createPublicAppointment(db, payload) {
         payload.petAge || '',
         payload.reasonNotes || '',
         nowIso,
-        nowIso
-      );
+        nowIso,
+      ]
+    );
 
-    const created = db
-      .prepare(`${SELECT_APPOINTMENT_BASE} WHERE a.id = ?`)
-      .get(insertInfo.lastInsertRowid);
+    const created = await tx.get(
+      `${SELECT_APPOINTMENT_BASE} WHERE a.id = ?`,
+      [insertInfo.lastInsertRowid]
+    );
 
     return mapAppointmentRow(created, { includeAdminFields: false });
   });
 }
 
-/**
- * Busca una cita verificando simultáneamente el folio y el teléfono normalizado.
- * Devuelve el mismo mensaje de error si el folio no existe o el teléfono no coincide
- * para proteger la privacidad de los tutores.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {string} folio
- * @param {string} phone
- */
-function lookupAppointment(db, folio, phone) {
+async function lookupAppointment(db, folio, phone) {
   const cleanFolio = String(folio || '').trim().toUpperCase();
   const cleanPhone = normalizePhone(phone);
 
-  const row = db
-    .prepare(`${SELECT_APPOINTMENT_BASE} WHERE UPPER(a.folio) = ?`)
-    .get(cleanFolio);
+  const row = await db.get(
+    `${SELECT_APPOINTMENT_BASE} WHERE UPPER(a.folio) = ?`,
+    [cleanFolio]
+  );
 
   if (!row || normalizePhone(row.owner_phone) !== cleanPhone) {
     throw new AppError(
@@ -225,23 +194,15 @@ function lookupAppointment(db, folio, phone) {
   return mapAppointmentRow(row, { includeAdminFields: false });
 }
 
-/**
- * Cancela una cita pública si coincide folio + teléfono y su estado actual es
- * `pendiente` o `confirmada`, liberando de inmediato ese lugar en la agenda.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {string} folio
- * @param {string} phone
- * @param {string} [ipAddress='']
- */
-function cancelPublicAppointment(db, folio, phone, ipAddress = '') {
+async function cancelPublicAppointment(db, folio, phone, ipAddress = '') {
   const cleanFolio = String(folio || '').trim().toUpperCase();
   const cleanPhone = normalizePhone(phone);
 
-  return withTransaction(db, () => {
-    const row = db
-      .prepare(`${SELECT_APPOINTMENT_BASE} WHERE UPPER(a.folio) = ?`)
-      .get(cleanFolio);
+  return withTransaction(db, async (tx) => {
+    const row = await tx.get(
+      `${SELECT_APPOINTMENT_BASE} WHERE UPPER(a.folio) = ?`,
+      [cleanFolio]
+    );
 
     if (!row || normalizePhone(row.owner_phone) !== cleanPhone) {
       throw new AppError(
@@ -262,38 +223,30 @@ function cancelPublicAppointment(db, folio, phone, ipAddress = '') {
     }
 
     const nowIso = new Date().toISOString();
-    db.prepare(`
-      UPDATE appointments
-      SET status = 'cancelada', updated_at = ?
-      WHERE id = ?
-    `).run(nowIso, row.id);
+    await tx.run(
+      `UPDATE appointments
+       SET status = 'cancelada', updated_at = ?
+       WHERE id = ?`,
+      [nowIso, row.id]
+    );
 
-    logAuditEvent(db, {
+    await logAuditEvent(tx, {
       eventType: 'PUBLIC_APPOINTMENT_CANCELLED',
       actor: 'publico',
       ipAddress,
       details: `Cita ${row.folio} cancelada por el tutor (horario ${row.appointment_date} ${row.appointment_time} liberado).`,
     });
 
-    const updated = db
-      .prepare(`${SELECT_APPOINTMENT_BASE} WHERE a.id = ?`)
-      .get(row.id);
-
+    const updated = await tx.get(`${SELECT_APPOINTMENT_BASE} WHERE a.id = ?`, [row.id]);
     return mapAppointmentRow(updated, { includeAdminFields: false });
   });
 }
 
-/**
- * Obtiene el resumen estadístico y la lista cronológica de citas de un día
- * para el tablero del panel de administrador.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {string} [dateStr] Fecha `AAAA-MM-DD`; si se omite, utiliza la fecha local de hoy.
- */
-function getAdminDashboard(db, dateStr) {
-  const targetDate = dateStr && String(dateStr).trim() !== ''
-    ? String(dateStr).trim()
-    : getTodayDateString();
+async function getAdminDashboard(db, dateStr) {
+  const targetDate =
+    dateStr && String(dateStr).trim() !== ''
+      ? String(dateStr).trim()
+      : getTodayDateString();
 
   if (!isValidDateString(targetDate)) {
     throw new AppError(
@@ -302,13 +255,12 @@ function getAdminDashboard(db, dateStr) {
     );
   }
 
-  const rows = db
-    .prepare(`
-      ${SELECT_APPOINTMENT_BASE}
-      WHERE a.appointment_date = ?
-      ORDER BY a.appointment_time ASC, a.id ASC
-    `)
-    .all(targetDate);
+  const rows = await db.all(
+    `${SELECT_APPOINTMENT_BASE}
+     WHERE a.appointment_date = ?
+     ORDER BY a.appointment_time ASC, a.id ASC`,
+    [targetDate]
+  );
 
   const stats = {
     total: rows.length,
@@ -333,14 +285,7 @@ function getAdminDashboard(db, dateStr) {
   };
 }
 
-/**
- * Lista citas para el panel de administrador con filtros opcionales por fecha,
- * estado y búsqueda libre (folio, nombre del tutor, teléfono o nombre de mascota).
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {{ date?: string, status?: string, search?: string }} [filters]
- */
-function listAdminAppointments(db, { date, status, search } = {}) {
+async function listAdminAppointments(db, { date, status, search } = {}) {
   const conditions = [];
   const params = [];
 
@@ -376,33 +321,20 @@ function listAdminAppointments(db, { date, status, search } = {}) {
   const whereClause =
     conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const rows = db
-    .prepare(`
-      ${SELECT_APPOINTMENT_BASE}
-      ${whereClause}
-      ORDER BY a.appointment_date DESC, a.appointment_time ASC, a.id DESC
-      LIMIT 500
-    `)
-    .all(...params);
+  const rows = await db.all(
+    `${SELECT_APPOINTMENT_BASE}
+     ${whereClause}
+     ORDER BY a.appointment_date DESC, a.appointment_time ASC, a.id DESC
+     LIMIT 500`,
+    params
+  );
 
   return rows.map((row) => mapAppointmentRow(row, { includeAdminFields: true }));
 }
 
-/**
- * Valida dentro de una transacción que un horario destino tenga cupo real al
- * reprogramar o reactivar una cita desde el panel de administrador, excluyendo
- * la propia cita del conteo de lugares ocupados.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {string} targetDate
- * @param {string} targetTime
- * @param {number} excludeAppointmentId
- */
-function assertSlotCapacityForAdminUpdate(db, targetDate, targetTime, excludeAppointmentId) {
+async function assertSlotCapacityForAdminUpdate(db, targetDate, targetTime, excludeAppointmentId) {
   const dayOfWeek = getDayOfWeek(targetDate);
-  const rule = db
-    .prepare('SELECT * FROM schedule_rules WHERE day_of_week = ?')
-    .get(dayOfWeek);
+  const rule = await db.get('SELECT * FROM schedule_rules WHERE day_of_week = ?', [dayOfWeek]);
 
   if (!rule || !rule.is_open) {
     throw new AppError(
@@ -411,13 +343,12 @@ function assertSlotCapacityForAdminUpdate(db, targetDate, targetTime, excludeApp
     );
   }
 
-  const block = db
-    .prepare(`
-      SELECT reason FROM blocked_dates
-      WHERE blocked_date = ? AND (blocked_time = '' OR blocked_time = ?)
-      LIMIT 1
-    `)
-    .get(targetDate, targetTime);
+  const block = await db.get(
+    `SELECT reason FROM blocked_dates
+     WHERE blocked_date = ? AND (blocked_time = '' OR blocked_time = ?)
+     LIMIT 1`,
+    [targetDate, targetTime]
+  );
 
   if (block) {
     throw new AppError(
@@ -426,7 +357,11 @@ function assertSlotCapacityForAdminUpdate(db, targetDate, targetTime, excludeApp
     );
   }
 
-  const validSlots = generateTimeSlots(rule.start_time, rule.end_time, rule.slot_minutes);
+  const validSlots = generateTimeSlots(
+    String(rule.start_time).slice(0, 5),
+    String(rule.end_time).slice(0, 5),
+    Number(rule.slot_minutes)
+  );
   if (!validSlots.includes(targetTime)) {
     throw new AppError(
       'El horario indicado no corresponde a un bloque de atención configurado para ese día.',
@@ -434,18 +369,17 @@ function assertSlotCapacityForAdminUpdate(db, targetDate, targetTime, excludeApp
     );
   }
 
-  const countRow = db
-    .prepare(`
-      SELECT COUNT(*) AS booked
-      FROM appointments
-      WHERE appointment_date = ?
-        AND appointment_time = ?
-        AND status IN ('pendiente', 'confirmada')
-        AND id != ?
-    `)
-    .get(targetDate, targetTime, excludeAppointmentId);
+  const countRow = await db.get(
+    `SELECT COUNT(*) AS booked
+     FROM appointments
+     WHERE appointment_date = ?
+       AND appointment_time = ?
+       AND status IN ('pendiente', 'confirmada')
+       AND id != ?`,
+    [targetDate, targetTime, excludeAppointmentId]
+  );
 
-  if (Number(countRow.booked) >= rule.capacity_per_slot) {
+  if (Number(countRow.booked) >= Number(rule.capacity_per_slot)) {
     throw new AppError(
       'El horario seleccionado ya alcanzó su cupo máximo de citas.',
       409
@@ -453,54 +387,44 @@ function assertSlotCapacityForAdminUpdate(db, targetDate, targetTime, excludeApp
   }
 }
 
-/**
- * Actualiza el estado, fecha, horario o notas internas de una cita existente.
- *
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {number} id
- * @param {{ status?: string, date?: string, time?: string, adminNotes?: string }} updates
- * @param {string} actor
- * @param {string} [ipAddress='']
- */
-function updateAdminAppointment(db, id, updates, actor, ipAddress = '') {
-  return withTransaction(db, () => {
-    const existing = db
-      .prepare(`${SELECT_APPOINTMENT_BASE} WHERE a.id = ?`)
-      .get(id);
+async function updateAdminAppointment(db, id, updates, actor, ipAddress = '') {
+  return withTransaction(db, async (tx) => {
+    const existing = await tx.get(`${SELECT_APPOINTMENT_BASE} WHERE a.id = ?`, [id]);
 
     if (!existing) {
       throw new AppError('La cita indicada no existe.', 404);
     }
 
+    const existingTime = String(existing.appointment_time).slice(0, 5);
     const nextDate = updates.date ?? existing.appointment_date;
-    const nextTime = updates.time ?? existing.appointment_time;
+    const nextTime = updates.time ?? existingTime;
     const nextStatus = updates.status ?? existing.status;
     const nextAdminNotes =
       updates.adminNotes !== undefined ? updates.adminNotes : existing.admin_notes;
 
     const scheduleChanged =
-      nextDate !== existing.appointment_date || nextTime !== existing.appointment_time;
+      nextDate !== existing.appointment_date || nextTime !== existingTime;
     const wasActive =
       existing.status === 'pendiente' || existing.status === 'confirmada';
     const willBeActive =
       nextStatus === 'pendiente' || nextStatus === 'confirmada';
 
-    // Si la cita queda ocupando cupo y cambió de horario o se está reactivando, validar cupo
     if (willBeActive && (scheduleChanged || !wasActive)) {
-      assertSlotCapacityForAdminUpdate(db, nextDate, nextTime, existing.id);
+      await assertSlotCapacityForAdminUpdate(tx, nextDate, nextTime, existing.id);
     }
 
     const nowIso = new Date().toISOString();
-    db.prepare(`
-      UPDATE appointments
-      SET
-        appointment_date = ?,
-        appointment_time = ?,
-        status = ?,
-        admin_notes = ?,
-        updated_at = ?
-      WHERE id = ?
-    `).run(nextDate, nextTime, nextStatus, nextAdminNotes, nowIso, existing.id);
+    await tx.run(
+      `UPDATE appointments
+       SET
+         appointment_date = ?,
+         appointment_time = ?,
+         status = ?,
+         admin_notes = ?,
+         updated_at = ?
+       WHERE id = ?`,
+      [nextDate, nextTime, nextStatus, nextAdminNotes, nowIso, existing.id]
+    );
 
     const changes = [];
     if (nextStatus !== existing.status) {
@@ -508,24 +432,21 @@ function updateAdminAppointment(db, id, updates, actor, ipAddress = '') {
     }
     if (scheduleChanged) {
       changes.push(
-        `horario: ${existing.appointment_date} ${existing.appointment_time} -> ${nextDate} ${nextTime}`
+        `horario: ${existing.appointment_date} ${existingTime} -> ${nextDate} ${nextTime}`
       );
     }
     if (updates.adminNotes !== undefined && nextAdminNotes !== existing.admin_notes) {
       changes.push('notas internas actualizadas');
     }
 
-    logAuditEvent(db, {
+    await logAuditEvent(tx, {
       eventType: 'ADMIN_APPOINTMENT_UPDATED',
       actor,
       ipAddress,
       details: `Cita ${existing.folio} modificada (${changes.join(', ') || 'sin cambios'}).`,
     });
 
-    const updated = db
-      .prepare(`${SELECT_APPOINTMENT_BASE} WHERE a.id = ?`)
-      .get(existing.id);
-
+    const updated = await tx.get(`${SELECT_APPOINTMENT_BASE} WHERE a.id = ?`, [existing.id]);
     return mapAppointmentRow(updated, { includeAdminFields: true });
   });
 }

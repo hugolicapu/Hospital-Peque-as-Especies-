@@ -2,12 +2,7 @@
  * @file scripts/setup-admin.js
  * @description Script de consola para crear o restablecer la cuenta de
  * Administrador Único (`id = 1`) del Hospital de Pequeñas Especies UNAM FESC.
- *
- * Modos de uso:
- * 1. Interactivo (recomendado en instalación manual):
- *    `npm run setup-admin`
- * 2. No interactivo (CI, despliegue automatizado o scripts):
- *    Definiendo variables de entorno `ADMIN_USERNAME` y `ADMIN_PASSWORD`.
+ * Funciona automáticamente con la base de datos configurada (MySQL/XAMPP o SQLite).
  */
 
 require('dotenv').config();
@@ -25,13 +20,6 @@ const {
   strongPasswordSchema,
 } = require('../src/validators/admin.validator');
 
-/**
- * Lee una contraseña desde terminal ocultando los caracteres escritos cuando
- * la entrada es un TTY interactivo; si no es TTY, lee normalmente con readline.
- *
- * @param {string} promptText
- * @returns {Promise<string>}
- */
 function readHiddenPassword(promptText) {
   return new Promise((resolve, reject) => {
     if (!input.isTTY) {
@@ -70,13 +58,11 @@ function readHiddenPassword(promptText) {
           resolve(password);
           return;
         }
-        // Ctrl+C cancela el asistente limpiamente
         if (ch === '\u0003') {
           output.write('\nOperación cancelada por el usuario.\n');
           cleanup();
           process.exit(1);
         }
-        // Retroceso (Backspace / Delete)
         if (ch === '\u0008' || ch === '\u007f') {
           if (password.length > 0) {
             password = password.slice(0, -1);
@@ -94,30 +80,29 @@ function readHiddenPassword(promptText) {
 }
 
 async function runSetup() {
-  const dbPath = process.env.DB_PATH || './data/hospital_fesc.db';
-  const db = initDatabase(dbPath);
-
+  let db;
   try {
+    db = await initDatabase();
+
     console.log('======================================================================');
     console.log(' Configuración de Administrador Único — Hospital de Pequeñas Especies');
     console.log(' UNAM · FES Cuautitlán (Campo 4)');
+    console.log(` Motor de base de datos: ${db.dialect === 'mysql' ? 'MySQL / MariaDB (XAMPP)' : 'SQLite'}`);
     console.log('======================================================================');
 
     const envUsername = process.env.ADMIN_USERNAME;
     const envPassword = process.env.ADMIN_PASSWORD;
 
-    // Modo automatizado mediante variables de entorno
     if (envUsername && envPassword) {
-      const result = upsertSingleAdmin(db, envUsername, envPassword);
+      const result = await upsertSingleAdmin(db, envUsername, envPassword);
       console.log(
         `[OK] Cuenta de administrador único configurada correctamente para el usuario "${result.username}".`
       );
       return;
     }
 
-    // Modo interactivo por terminal
-    if (isAdminConfigured(db)) {
-      const existing = getAdminAccount(db);
+    if (await isAdminConfigured(db)) {
+      const existing = await getAdminAccount(db);
       console.log(
         `\n[AVISO] Ya existe una cuenta de administrador único ("${existing.username}").`
       );
@@ -166,7 +151,7 @@ async function runSetup() {
       password = check.data;
     }
 
-    const result = upsertSingleAdmin(db, username, password);
+    const result = await upsertSingleAdmin(db, username, password);
     console.log(
       `\n[OK] Cuenta de administrador único guardada exitosamente para "${result.username}".`
     );
@@ -182,10 +167,12 @@ async function runSetup() {
     }
     process.exitCode = 1;
   } finally {
-    try {
-      db.close();
-    } catch {
-      // Ignorar si ya estaba cerrada
+    if (db) {
+      try {
+        await db.close();
+      } catch {
+        // Ignorar
+      }
     }
   }
 }
