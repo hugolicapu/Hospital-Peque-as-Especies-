@@ -11,8 +11,10 @@
 const HOSPITAL_INFO = Object.freeze({
   name: 'Hospital de Pequeñas Especies',
   institution: 'UNAM · FES Cuautitlán (Campo 4)',
-  address: 'Km 2.5 Carretera Cuautitlán-Teoloyucan, San Sebastián Xhala, Cuautitlán Izcalli, Edo. de Méx.',
-  phone: '55 5623 1999',
+  address: 'Av. Jorge Jiménez Gallardo S/N, Col. San Sebastián Xhala, Cuautitlán Izcalli, Edo. de Méx., C.P. 54714 (Campo 4, a un costado del Hospital de Equinos)',
+  phone: '55 5623 1999 (Ext. 39481 y 39484)',
+  phoneDial: '5556231999',
+  email: 'hpe@cuautitlan.unam.mx',
   arrivalMinutes: 15,
   maxDaysAhead: 30,
 });
@@ -79,17 +81,18 @@ const DEFAULT_SERVICES = Object.freeze([
 
 /**
  * Reglas de horario semanal iniciales (0 = Domingo, 1 = Lunes ... 6 = Sábado).
- * Por defecto el hospital atiende de lunes a viernes de 09:00 a 17:00
- * con bloques de 30 minutos y capacidad para 2 citas simultáneas por bloque.
+ * Horario oficial del Hospital de Pequeñas Especies UNAM FES Cuautitlán (Campo 4):
+ * lunes a viernes de 10:00 a 18:00 con bloques de 30 minutos y 2 citas por bloque.
+ * Sábados y domingos permanece cerrado.
  */
 const DEFAULT_SCHEDULE_RULES = Object.freeze([
-  { day_of_week: 0, is_open: 0, start_time: '09:00', end_time: '14:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 1, is_open: 1, start_time: '09:00', end_time: '17:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 2, is_open: 1, start_time: '09:00', end_time: '17:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 3, is_open: 1, start_time: '09:00', end_time: '17:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 4, is_open: 1, start_time: '09:00', end_time: '17:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 5, is_open: 1, start_time: '09:00', end_time: '17:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 6, is_open: 0, start_time: '09:00', end_time: '14:00', slot_minutes: 30, capacity_per_slot: 2 },
+  { day_of_week: 0, is_open: 0, start_time: '10:00', end_time: '14:00', slot_minutes: 30, capacity_per_slot: 2 },
+  { day_of_week: 1, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
+  { day_of_week: 2, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
+  { day_of_week: 3, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
+  { day_of_week: 4, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
+  { day_of_week: 5, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
+  { day_of_week: 6, is_open: 0, start_time: '10:00', end_time: '14:00', slot_minutes: 30, capacity_per_slot: 2 },
 ]);
 
 /**

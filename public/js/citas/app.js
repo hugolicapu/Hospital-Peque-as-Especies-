@@ -196,8 +196,8 @@ function buildHoursSummary(scheduleRules) {
 
   const first = openRules[0];
   const last = openRules[openRules.length - 1];
-  const startTime = formatTime12h(first.startTime ?? first.start_time ?? '09:00');
-  const endTime = formatTime12h(first.endTime ?? first.end_time ?? '17:00');
+  const startTime = formatTime12h(first.startTime ?? first.start_time ?? '10:00');
+  const endTime = formatTime12h(first.endTime ?? first.end_time ?? '18:00');
 
   const firstDay = DAY_NAMES_SHORT[Number(first.dayOfWeek ?? first.day_of_week)] || '';
   const lastDay = DAY_NAMES_SHORT[Number(last.dayOfWeek ?? last.day_of_week)] || '';
@@ -250,8 +250,9 @@ function renderHospitalHeader(configData) {
   if (phoneEl && hospital.phone) {
     phoneEl.textContent = hospital.phone;
     if (phoneLinkEl) {
-      const digitsOnly = String(hospital.phone).replace(/\D/g, '');
-      phoneLinkEl.setAttribute('href', `tel:${digitsOnly || hospital.phone}`);
+      const dialNumber =
+        hospital.phoneDial || String(hospital.phone).replace(/\D/g, '').slice(0, 10);
+      phoneLinkEl.setAttribute('href', `tel:${dialNumber || hospital.phone}`);
     }
   }
 
