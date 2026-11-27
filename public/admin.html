@@ -18,6 +18,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
     <title>Panel de Administración · Hospital de Pequeñas Especies UNAM FESC</title>
+    <link rel="icon" type="image/svg+xml" href="/img/unamlogo.svg" />
 
     <!-- Estilos locales servidos desde el propio backend (sin CDN) -->
     <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css" />
@@ -48,8 +49,12 @@
       <section class="card admin-auth-card shadow-sm border-0" aria-labelledby="setupTitle">
         <div class="admin-auth-banner text-white p-4">
           <div class="d-flex align-items-center gap-3">
-            <div class="admin-shield-icon" aria-hidden="true">
-              <i class="bi bi-shield-exclamation fs-3"></i>
+            <div class="admin-shield-icon">
+              <img
+                src="/img/unamlogo.svg"
+                alt="Escudo oficial de la UNAM"
+                class="admin-logo-img"
+              />
             </div>
             <div>
               <span class="badge badge-unam-gold mb-1">Configuración inicial requerida</span>
@@ -102,8 +107,12 @@
       <section class="card admin-auth-card shadow-sm border-0" aria-labelledby="loginTitle">
         <div class="admin-auth-banner text-white p-4">
           <div class="d-flex align-items-center gap-3 mb-3">
-            <div class="admin-shield-icon" aria-hidden="true">
-              <i class="bi bi-shield-lock-fill fs-3"></i>
+            <div class="admin-shield-icon">
+              <img
+                src="/img/unamlogo.svg"
+                alt="Escudo oficial de la UNAM"
+                class="admin-logo-img"
+              />
             </div>
             <div>
               <p class="small text-white-50 mb-0">UNAM · FES Cuautitlán (Campo 4)</p>
@@ -219,8 +228,12 @@
         <div class="container-fluid px-3 px-lg-4 py-2">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div class="d-flex align-items-center gap-3">
-              <div class="admin-brand-mark" aria-hidden="true">
-                <i class="bi bi-hospital-fill"></i>
+              <div class="admin-brand-mark">
+                <img
+                  src="/img/unamlogo.svg"
+                  alt="Escudo oficial de la UNAM"
+                  class="admin-topbar-logo"
+                />
               </div>
               <div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -355,13 +368,22 @@
           >
             <!-- Encabezado exclusivo para impresión de la agenda del día -->
             <div class="print-only-header mb-3">
-              <h1 class="h4 fw-bold mb-1">
-                Hospital de Pequeñas Especies · UNAM FES Cuautitlán (Campo 4)
-              </h1>
-              <p class="mb-0">
-                <strong>Agenda de citas:</strong> <span id="printHeaderDate"></span> ·
-                <strong>Impreso:</strong> <span id="printHeaderGenerated"></span>
-              </p>
+              <div class="d-flex align-items-center gap-3">
+                <img
+                  src="/img/unamlogo.svg"
+                  alt="Escudo oficial de la UNAM"
+                  class="print-logo-img"
+                />
+                <div>
+                  <h1 class="h4 fw-bold mb-1">
+                    Hospital de Pequeñas Especies · UNAM FES Cuautitlán (Campo 4)
+                  </h1>
+                  <p class="mb-0">
+                    <strong>Agenda de citas:</strong> <span id="printHeaderDate"></span> ·
+                    <strong>Impreso:</strong> <span id="printHeaderGenerated"></span>
+                  </p>
+                </div>
+              </div>
               <hr class="my-2" />
             </div>
 
