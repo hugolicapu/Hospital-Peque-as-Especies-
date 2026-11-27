@@ -1,0 +1,19 @@
+# Dependencias instaladas por npm
+node_modules/
+
+# Variables de entorno locales con secretos (NUNCA versionar)
+.env
+.env.local
+
+# Base de datos SQLite local y archivos temporales de SQLite
+data/*.db
+data/*.db-shm
+data/*.db-wal
+*.db
+
+# Logs y archivos del sistema operativo
+logs/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
