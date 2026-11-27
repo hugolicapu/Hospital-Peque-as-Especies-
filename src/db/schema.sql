@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS services (
   name TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL,
   icon TEXT NOT NULL DEFAULT 'bi-heart-pulse-fill',
-  duration_minutes INTEGER NOT NULL DEFAULT 30,
+  duration_minutes INTEGER NOT NULL DEFAULT 60,
   active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
 );
 
@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS schedule_rules (
   is_open INTEGER NOT NULL DEFAULT 0 CHECK (is_open IN (0, 1)),
   start_time TEXT NOT NULL,
   end_time TEXT NOT NULL,
-  slot_minutes INTEGER NOT NULL DEFAULT 30 CHECK (slot_minutes IN (15, 20, 30, 45, 60)),
-  capacity_per_slot INTEGER NOT NULL DEFAULT 2 CHECK (capacity_per_slot BETWEEN 1 AND 20)
+  slot_minutes INTEGER NOT NULL DEFAULT 60 CHECK (slot_minutes IN (15, 20, 30, 45, 60)),
+  capacity_per_slot INTEGER NOT NULL DEFAULT 1 CHECK (capacity_per_slot BETWEEN 1 AND 20)
 );
 
 -- 4. Fechas o franjas horarias bloqueadas (días festivos, mantenimiento, eventos).

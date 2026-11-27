@@ -592,14 +592,14 @@
         </div>
 
         <!-- ===================================================================
-             PANTALLA DE ÉXITO Y COMPROBANTE IMPRIMIBLE DE CITA
+             PANTALLA DE ÉXITO Y COMPROBANTE OFICIAL DESCARGABLE / IMPRIMIBLE
              =================================================================== -->
         <article
           id="booking-receipt"
           class="step-card receipt-card d-none"
           aria-labelledby="receipt-heading"
         >
-          <div class="receipt-banner">
+          <div class="receipt-official-header">
             <div class="receipt-brand-emblem">
               <img
                 src="/img/unamlogo.svg"
@@ -607,14 +607,24 @@
                 class="receipt-logo-img"
               />
             </div>
-            <div>
+            <div class="flex-grow-1">
+              <p class="receipt-kicker mb-1">
+                UNAM · FES CUAUTITLÁN (CAMPO 4) · COMPROBANTE OFICIAL DE CITA
+              </p>
               <h2 id="receipt-heading" class="receipt-title mb-1" tabindex="-1">
                 ¡Su cita quedó agendada!
               </h2>
               <p class="mb-0 receipt-subtitle">
-                Guarde o imprima su número de folio para cualquier consulta o cambio.
+                Guarde este comprobante en su celular o imprímalo para presentarlo el día de su visita.
               </p>
             </div>
+          </div>
+
+          <div class="receipt-meta-row mt-3">
+            <span id="receipt-status-pill" class="badge status-pill text-bg-warning">
+              Pendiente por confirmar
+            </span>
+            <span id="receipt-issued-at" class="receipt-issued-text"></span>
           </div>
 
           <!-- Folio en letra muy grande para lectura sin esfuerzo -->
@@ -646,17 +656,27 @@
               <li>
                 Traiga a su mascota con <strong>correa o transportadora segura</strong>, y si cuenta con cartilla de vacunación, tráigala consigo.
               </li>
+              <li>
+                La atención es personalizada (<strong>1 cita por hora</strong>). Si no podrá asistir, por favor cancele con anticipación usando su folio.
+              </li>
               <li id="receipt-hospital-contact">
                 Dirección y dudas: Hospital de Pequeñas Especies UNAM FES Cuautitlán Campo 4.
               </li>
             </ul>
           </div>
 
+          <!-- Aviso de confirmación al guardar la imagen del comprobante -->
+          <div id="receipt-download-feedback" class="alert-box alert-box-success d-none no-print" role="status"></div>
+
           <!-- Acciones posteriores (ocultas al imprimir) -->
-          <div class="step-actions no-print mt-4">
+          <div class="step-actions receipt-actions no-print mt-4">
+            <button type="button" id="btn-download-receipt" class="btn btn-unam-confirm btn-lg-senior">
+              <i class="bi bi-download me-2" aria-hidden="true"></i>
+              <span>Guardar comprobante (Imagen)</span>
+            </button>
             <button type="button" id="btn-print-receipt" class="btn btn-unam-primary btn-lg-senior">
               <i class="bi bi-printer-fill me-2" aria-hidden="true"></i>
-              <span>Imprimir comprobante</span>
+              <span>Imprimir o guardar en PDF</span>
             </button>
             <button type="button" id="btn-book-another" class="btn btn-unam-secondary btn-lg-senior">
               <i class="bi bi-calendar-plus me-2" aria-hidden="true"></i>

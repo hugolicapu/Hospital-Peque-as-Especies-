@@ -51,48 +51,48 @@ const DEFAULT_SERVICES = Object.freeze([
     name: 'Consulta general',
     description: 'Revisión médica completa para síntomas nuevos, chequeo anual o malestar general.',
     icon: 'bi-heart-pulse-fill',
-    duration_minutes: 30,
+    duration_minutes: 60,
   },
   {
     name: 'Vacunación',
     description: 'Aplicación de vacunas preventivas y actualización de cartilla de salud.',
     icon: 'bi-shield-plus',
-    duration_minutes: 30,
+    duration_minutes: 60,
   },
   {
     name: 'Desparasitación',
     description: 'Control de parásitos internos y externos acorde al peso y especie.',
     icon: 'bi-capsule-pill',
-    duration_minutes: 30,
+    duration_minutes: 60,
   },
   {
     name: 'Revisión y seguimiento',
     description: 'Control posterior a tratamiento, curaciones o retiro de puntos.',
     icon: 'bi-clipboard2-check-fill',
-    duration_minutes: 30,
+    duration_minutes: 60,
   },
   {
     name: 'Consulta de especialidad',
     description: 'Valoración especializada (dermatología, oftalmología, ortopedia o cardiología).',
     icon: 'bi-hospital-fill',
-    duration_minutes: 30,
+    duration_minutes: 60,
   },
 ]);
 
 /**
  * Reglas de horario semanal iniciales (0 = Domingo, 1 = Lunes ... 6 = Sábado).
  * Horario oficial del Hospital de Pequeñas Especies UNAM FES Cuautitlán (Campo 4):
- * lunes a viernes de 10:00 a 18:00 con bloques de 30 minutos y 2 citas por bloque.
+ * lunes a viernes de 10:00 a 18:00 con bloques de 60 minutos y 1 cita por hora.
  * Sábados y domingos permanece cerrado.
  */
 const DEFAULT_SCHEDULE_RULES = Object.freeze([
-  { day_of_week: 0, is_open: 0, start_time: '10:00', end_time: '14:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 1, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 2, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 3, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 4, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 5, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 30, capacity_per_slot: 2 },
-  { day_of_week: 6, is_open: 0, start_time: '10:00', end_time: '14:00', slot_minutes: 30, capacity_per_slot: 2 },
+  { day_of_week: 0, is_open: 0, start_time: '10:00', end_time: '14:00', slot_minutes: 60, capacity_per_slot: 1 },
+  { day_of_week: 1, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 60, capacity_per_slot: 1 },
+  { day_of_week: 2, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 60, capacity_per_slot: 1 },
+  { day_of_week: 3, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 60, capacity_per_slot: 1 },
+  { day_of_week: 4, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 60, capacity_per_slot: 1 },
+  { day_of_week: 5, is_open: 1, start_time: '10:00', end_time: '18:00', slot_minutes: 60, capacity_per_slot: 1 },
+  { day_of_week: 6, is_open: 0, start_time: '10:00', end_time: '14:00', slot_minutes: 60, capacity_per_slot: 1 },
 ]);
 
 /**

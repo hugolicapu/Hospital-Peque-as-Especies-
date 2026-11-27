@@ -165,6 +165,8 @@ test('Suite completa de integración, sincronización y seguridad Single-Admin',
     assert.equal(availBefore.data.data.isOpen, true);
     const firstSlot = availBefore.data.data.slots.find((s) => s.isAvailable);
     assert.ok(firstSlot, 'Debe existir al menos un horario disponible');
+    assert.equal(firstSlot.capacity, 1, 'Solo debe permitirse 1 cita por hora');
+    assert.equal(availBefore.data.data.slots.length, 8, 'Horario 10:00-18:00 genera 8 bloques de 1 hora');
 
     const createRes = await publicClient.request('/api/public/appointments', {
       method: 'POST',
@@ -186,10 +188,25 @@ test('Suite completa de integración, sincronización y seguridad Single-Admin',
     assert.match(createRes.data.data.folio, /^FESC-\d{8}-[A-Z0-9]{4}$/);
     createdFolio = createRes.data.data.folio;
 
-    // El cupo debe haberse reducido en 1 inmediatamente
+    // Al ser 1 cita por hora, el horario queda ocupado inmediatamente y rechaza una 2.ª cita (409)
     const availAfter = await publicClient.request(`/api/public/availability?date=${targetDate}`);
     const sameSlot = availAfter.data.data.slots.find((s) => s.time === firstSlot.time);
-    assert.equal(sameSlot.available, firstSlot.available - 1);
+    assert.equal(sameSlot.available, 0);
+    assert.equal(sameSlot.isAvailable, false);
+
+    const duplicateHourRes = await publicClient.request('/api/public/appointments', {
+      method: 'POST',
+      body: {
+        serviceId,
+        date: targetDate,
+        time: firstSlot.time,
+        ownerName: 'Carlos Ramírez',
+        ownerPhone: '5587654321',
+        petName: 'Max',
+        petSpecies: 'Perro',
+      },
+    });
+    assert.equal(duplicateHourRes.status, 409, 'No debe permitir una segunda cita en la misma hora');
 
     // Consulta con teléfono erróneo debe rechazarse (privacidad)
     const badLookup = await publicClient.request(

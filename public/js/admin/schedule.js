@@ -41,10 +41,10 @@ function normalizeRule(raw) {
   return {
     dayOfWeek: Number(raw.dayOfWeek ?? raw.day_of_week ?? 0),
     isOpen: Boolean(raw.isOpen ?? raw.is_open),
-    startTime: String(raw.startTime ?? raw.start_time ?? '09:00').slice(0, 5),
-    endTime: String(raw.endTime ?? raw.end_time ?? '17:00').slice(0, 5),
-    slotMinutes: Number(raw.slotMinutes ?? raw.slot_minutes ?? 30),
-    capacityPerSlot: Number(raw.capacityPerSlot ?? raw.capacity_per_slot ?? 2),
+    startTime: String(raw.startTime ?? raw.start_time ?? '10:00').slice(0, 5),
+    endTime: String(raw.endTime ?? raw.end_time ?? '18:00').slice(0, 5),
+    slotMinutes: Number(raw.slotMinutes ?? raw.slot_minutes ?? 60),
+    capacityPerSlot: Number(raw.capacityPerSlot ?? raw.capacity_per_slot ?? 1),
   };
 }
 
@@ -154,10 +154,10 @@ export function initSchedule(ctx) {
       const rule = byDay.get(dayOfWeek) || {
         dayOfWeek,
         isOpen: false,
-        startTime: '09:00',
-        endTime: '17:00',
-        slotMinutes: 30,
-        capacityPerSlot: 2,
+        startTime: '10:00',
+        endTime: '18:00',
+        slotMinutes: 60,
+        capacityPerSlot: 1,
       };
 
       const switchId = `ruleOpen_${dayOfWeek}`;
@@ -523,10 +523,10 @@ export function initSchedule(ctx) {
       rulesPayload.push({
         dayOfWeek,
         isOpen,
-        startTime: startTime || '09:00',
-        endTime: endTime || '17:00',
-        slotMinutes: VALID_SLOT_MINUTES.includes(slotMinutes) ? slotMinutes : 30,
-        capacityPerSlot: Math.min(20, Math.max(1, Number.isFinite(capacityPerSlot) ? capacityPerSlot : 2)),
+        startTime: startTime || '10:00',
+        endTime: endTime || '18:00',
+        slotMinutes: VALID_SLOT_MINUTES.includes(slotMinutes) ? slotMinutes : 60,
+        capacityPerSlot: Math.min(20, Math.max(1, Number.isFinite(capacityPerSlot) ? capacityPerSlot : 1)),
       });
     }
 

@@ -83,13 +83,13 @@ Una vez encendido, abre en tu navegador:
 ## Guía rápida de uso
 
 ### Para tutores / personas mayores (`/`)
-1. **Accesibilidad en la barra superior:** Permite cambiar el tamaño de letra (**Normal**, **Grande**, **Muy grande**) y activar el modo **Alto contraste**. La preferencia queda guardada automáticamente en el navegador.
+1. **Accesibilidad en la barra superior:** Permite cambiar el tamaño de letra (**Normal**, **Grande**, **Muy grande**) y activar el modo **Alto contraste**. La preferencia queda guardada automáticamente en el navegador. Diseño 100% responsivo para celulares, tabletas y computadoras.
 2. **Agendar una cita nueva (4 pasos claros):**
    - **Paso 1:** Elegir qué necesita la mascota (Consulta general, Vacunación, Desparasitación, Revisión o Especialidad).
-   - **Paso 2:** Elegir el día (con botones rápidos como *Hoy*, *Mañana* o el calendario) y un horario disponible en formato de 12 horas (`9:00 a. m.`).
+   - **Paso 2:** Elegir el día (con botones rápidos como *Hoy*, *Mañana* o el calendario) y un horario disponible en formato de 12 horas (`10:00 a. m.`) dentro del horario oficial (**lunes a viernes de 10:00 a 18:00, 1 cita por hora**).
    - **Paso 3:** Llenar los datos del dueño/tutor y de la mascota con ejemplos visibles en cada campo.
-   - **Paso 4:** Revisar el resumen y confirmar. Se genera un **folio fácil de leer** (sin caracteres confusos como `0/O` o `1/I/L`) y un botón grande para **Imprimir comprobante**.
-3. **Consultar o cancelar mi cita:** Ingresando el **folio** y el **teléfono de 10 dígitos** registrados, el tutor puede ver el estado actual de su cita o cancelarla liberando ese lugar para otro paciente.
+   - **Paso 4:** Revisar el resumen y confirmar. Se genera un **comprobante oficial con folio fácil de leer** (sin caracteres confusos como `0/O` o `1/I/L`), escudo de la UNAM, botón grande para **Guardar comprobante en imagen PNG** (ideal para celular o computadora) y botón **Imprimir o guardar en PDF**.
+3. **Consultar o cancelar mi cita:** Ingresando el **folio** y el **teléfono de 10 dígitos** registrados, el tutor puede ver el estado actual de su cita (con teléfono y correo enmascarados por privacidad), **guardar su comprobante en PNG**, imprimirlo o cancelarla liberando esa hora para otro paciente.
 
 ### Para el Administrador Único (`/admin`)
 - **Pestaña 1 — Agenda y Citas:** Indicadores del día (Total, Pendientes, Confirmadas, Atendidas, Canceladas), filtros por fecha/estado/búsqueda, acciones rápidas (*Confirmar*, *Atendida*, *Cancelar*), modal de **Ver / Reagendar** con notas internas privadas y botón para **Imprimir agenda del día**.
@@ -125,49 +125,58 @@ Todo el código está dividido por responsabilidades y comentado internamente en
 
 ```text
 .
-├── README.md                        # Esta guía de instalación, uso y arquitectura
-├── package.json                     # Dependencias y scripts (start, dev, setup-admin, test)
-├── .env.example                     # Plantilla de configuración (variables de entorno)
+├── README.md                        # Esta guía de instalación, uso, seguridad y nube
+├── LICENSE                          # Licencia del repositorio
+├── package.json                     # Dependencias y scripts (start, dev, setup-admin, reset-db, test)
+├── Dockerfile                       # Imagen Docker de producción (node:22-alpine, no-root + healthcheck)
+├── .dockerignore                    # Exclusiones para compilación Docker limpia
+├── render.yaml                      # Blueprint listo para despliegue gratuito en Render
+├── .env.example                     # Plantilla documentada de variables de entorno (local y nube)
 ├── .gitignore                       # Archivos excluidos de Git (.env, BD local, node_modules)
 ├── scripts/
-│   └── setup-admin.js               # Asistente de consola para crear/restablecer al único admin
+│   ├── setup-admin.js               # Asistente de consola para crear/restablecer al único admin
+│   └── reset-db.js                  # Limpia citas, bloqueos y bitácora conservando admin y catálogo
 ├── src/
-│   ├── server.js                    # Punto de entrada del servidor HTTP
-│   ├── app.js                       # Configuración de Express, Helmet, sesiones y rutas
+│   ├── server.js                    # Punto de entrada HTTP (0.0.0.0, arranque cloud y apagado seguro)
+│   ├── app.js                       # Express, Helmet, sesiones, /health, ADMIN_PATH y APP_MODE
 │   ├── config/
-│   │   └── constants.js             # Datos institucionales UNAM FESC y parámetros base
+│   │   └── constants.js             # Datos oficiales UNAM FESC Campo 4 y horario base (10:00-18:00)
 │   ├── db/
-│   │   ├── database.js              # Adaptador unificado MySQL/XAMPP (mysql2) y SQLite
+│   │   ├── database.js              # Adaptador unificado MySQL (XAMPP / SSL nube) y SQLite
 │   │   ├── schema.mysql.sql         # Esquema MySQL/MariaDB (InnoDB, utf8mb4, CHECK id = 1)
 │   │   └── schema.sql               # Esquema SQLite equivalente (para pruebas/respaldo)
 │   ├── middleware/
-│   │   ├── auth.middleware.js       # Verifica sesión activa exclusiva y timeout
-│   │   ├── csrf.middleware.js       # Generación y verificación de token X-CSRF-Token
-│   │   ├── rateLimit.middleware.js  # Límites anti-fuerza bruta y abuso de endpoints
-│   │   └── error.middleware.js      # Manejo centralizado de errores sin filtrar detalles internos
+│   │   ├── auth.middleware.js       # Sesión única exclusiva, huella de navegador y timeout
+│   │   ├── csrf.middleware.js       # Fetch Metadata, Origin/Referer y token X-CSRF-Token
+│   │   ├── security.middleware.js   # Anti-caché no-store, Permissions-Policy, HPP, IP allowlist
+│   │   ├── rateLimit.middleware.js  # Límites globales, login, escritura admin y anti-enumeración
+│   │   └── error.middleware.js      # Manejo seguro de errores sin filtrar detalles internos
 │   ├── validators/
 │   │   ├── appointment.validator.js # Reglas Zod para citas públicas y edición admin
 │   │   └── admin.validator.js       # Reglas Zod para login, contraseña fuerte, horarios y bloqueos
 │   ├── services/
-│   │   ├── appointment.service.js   # Creación atómica de citas, folios, búsqueda y agenda
-│   │   ├── schedule.service.js      # Cálculo de disponibilidad, horarios semanales y bloqueos
+│   │   ├── appointment.service.js   # Creación atómica de citas, folios, enmascaramiento PII y agenda
+│   │   ├── schedule.service.js      # Disponibilidad en zona horaria America/Mexico_City y bloqueos
 │   │   ├── auth.service.js          # Hash bcrypt, sesión única y bloqueo tras intentos fallidos
 │   │   └── audit.service.js         # Registro y consulta de la bitácora de auditoría
 │   └── routes/
 │       ├── public.routes.js         # API pública (/api/public/*)
 │       └── admin.routes.js          # API protegida del administrador (/api/admin/*)
 ├── public/
-│   ├── index.html                   # Página pública de citas (Bootstrap 5 + accesibilidad)
-│   ├── admin.html                   # Panel de administrador único (Bootstrap 5)
+│   ├── index.html                   # Página pública de citas (Bootstrap 5 + accesibilidad, sin link admin)
+│   ├── admin.html                   # Panel de administrador único (servido solo en ADMIN_PATH)
+│   ├── robots.txt                   # Bloquea indexación de /admin, /api/ y /health
+│   ├── img/
+│   │   └── unamlogo.svg             # Escudo oficial escalable de la UNAM
 │   ├── css/
-│   │   ├── theme.css                # Tema UNAM + modos de letra grande, alto contraste e impresión
-│   │   └── admin.css                # Estilos operativos del panel de administrador
+│   │   ├── theme.css                # Tema UNAM responsivo + letra grande, alto contraste e impresión
+│   │   └── admin.css                # Estilos responsivos del panel de administrador
 │   └── js/
 │       ├── shared/api.js            # Cliente HTTP compartido, soporte CSRF y helpers DOM seguros
-│       ├── citas/                   # Módulos del portal público (app.js, wizard.js, lookup.js)
+│       ├── citas/                   # Módulos del portal público (app.js, wizard.js, lookup.js, receipt.js)
 │       └── admin/                   # Módulos del panel admin (app.js, auth.js, appointments.js, schedule.js)
 ├── tests/
-│   └── api.test.js                  # Pruebas automatizadas de integración y seguridad
+│   └── api.test.js                  # Pruebas automatizadas de integración, privacidad y seguridad
 └── .agent/skills/hospital-citas-fesc/
     └── SKILL.md                     # Skill local del proyecto (contrato de API y convenciones)
 ```
@@ -184,11 +193,21 @@ npm test
 *(En PowerShell: `npm.cmd test`)*.
 
 Verifica automáticamente:
-1. Entrega de páginas HTML, Bootstrap local y cabeceras Helmet CSP.
-2. Flujo público completo (disponibilidad, reserva atómica, reducción de cupo y privacidad en consulta).
+1. Entrega de páginas HTML, Bootstrap local, `/health`, `/robots.txt` y cabeceras Helmet/anti-caché (`no-store`, `no-referrer`, `Permissions-Policy`, `DENY`).
+2. Flujo público completo (disponibilidad, reserva atómica, reducción de cupo y enmascaramiento de datos personales en consulta).
 3. Seguridad del administrador (`401` sin sesión, `403` sin CSRF, invalidación de sesión previa al iniciar sesión en otro navegador).
 4. Sincronización bidireccional (confirmación de cita, bloqueo y desbloqueo de horarios reflejados al instante en la página pública, y cancelación).
 5. Bloqueo temporal de la cuenta tras 5 intentos fallidos de inicio de sesión.
+6. Defensa anti-filtración (`Sec-Fetch-Site: cross-site`, HPP, *Prototype Pollution*, `Content-Type` no JSON y revocación por cambio de `User-Agent`).
+7. Privacidad de ruta secreta (`ADMIN_PATH`) y lista blanca de IPs (`ADMIN_ALLOWED_IPS`).
+
+### Limpiar datos de prueba en la base de datos
+Para dejar en cero citas, bloqueos y bitácora conservando tu cuenta única de administrador, los 5 servicios activos y el horario oficial (`10:00`–`18:00`):
+
+```bash
+npm run reset-db
+```
+*(En PowerShell: `npm.cmd run reset-db`)*.
 
 ---
 

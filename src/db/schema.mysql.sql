@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS services (
   name VARCHAR(120) NOT NULL UNIQUE,
   description VARCHAR(500) NOT NULL,
   icon VARCHAR(80) NOT NULL DEFAULT 'bi-heart-pulse-fill',
-  duration_minutes INT UNSIGNED NOT NULL DEFAULT 30,
+  duration_minutes INT UNSIGNED NOT NULL DEFAULT 60,
   active TINYINT(1) NOT NULL DEFAULT 1,
   CONSTRAINT chk_services_active CHECK (active IN (0, 1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS schedule_rules (
   is_open TINYINT(1) NOT NULL DEFAULT 0,
   start_time CHAR(5) NOT NULL,
   end_time CHAR(5) NOT NULL,
-  slot_minutes INT UNSIGNED NOT NULL DEFAULT 30,
-  capacity_per_slot INT UNSIGNED NOT NULL DEFAULT 2,
+  slot_minutes INT UNSIGNED NOT NULL DEFAULT 60,
+  capacity_per_slot INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT chk_schedule_day CHECK (day_of_week BETWEEN 0 AND 6),
   CONSTRAINT chk_schedule_open CHECK (is_open IN (0, 1)),
   CONSTRAINT chk_schedule_slot CHECK (slot_minutes IN (15, 20, 30, 45, 60)),

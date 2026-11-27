@@ -18,6 +18,7 @@ import {
   formatTime12h,
   STATUS_META,
 } from '../shared/api.js';
+import { downloadReceiptPng } from './receipt.js';
 
 /**
  * Extrae únicamente los dígitos de un número telefónico.
@@ -227,7 +228,31 @@ export function initLookup(getHospitalConfig) {
             ' de su cita con su mascota en correa o transportadora.',
           ]),
         ]),
-        createEl('div', { className: 'step-actions no-print' }, [
+        createEl('div', { className: 'step-actions receipt-actions no-print' }, [
+          createEl(
+            'button',
+            {
+              type: 'button',
+              className: 'btn btn-unam-confirm btn-lg-senior',
+              onClick: async (ev) => {
+                const btn = ev.currentTarget;
+                btn.disabled = true;
+                try {
+                  await downloadReceiptPng(appt, getHospitalConfig?.()?.hospital || {});
+                  showLookupAlert(
+                    '¡Comprobante guardado en formato imagen (PNG)! Revise sus Descargas.',
+                    'success'
+                  );
+                } finally {
+                  btn.disabled = false;
+                }
+              },
+            },
+            [
+              createEl('i', { className: 'bi bi-download me-2', 'aria-hidden': 'true' }),
+              'Guardar comprobante',
+            ]
+          ),
           createEl(
             'button',
             {
@@ -237,7 +262,7 @@ export function initLookup(getHospitalConfig) {
             },
             [
               createEl('i', { className: 'bi bi-printer-fill me-2', 'aria-hidden': 'true' }),
-              'Imprimir datos',
+              'Imprimir / PDF',
             ]
           ),
           createEl(

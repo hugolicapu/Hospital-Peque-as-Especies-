@@ -1064,42 +1064,60 @@ textarea:focus-visible,
   margin-top: 0.1rem;
 }
 
-/* Pantalla de éxito / Comprobante */
+/* Pantalla de éxito / Comprobante oficial */
 .receipt-card {
-  border: 3px solid var(--success-border);
+  border: 3px solid var(--unam-blue);
+  overflow: hidden;
 }
 
-.receipt-banner {
+.receipt-official-header {
   display: flex;
   align-items: center;
-  gap: 1.1rem;
-  background-color: var(--success-bg);
-  border: 2px solid var(--success-border);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-}
-
-.receipt-check-circle {
-  width: 60px;
-  height: 60px;
-  min-width: 60px;
-  border-radius: 50%;
-  background-color: var(--success-border);
+  gap: 1.15rem;
+  background: linear-gradient(135deg, var(--unam-blue) 0%, #003b7a 100%);
   color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
+  border-bottom: 5px solid var(--unam-gold);
+  border-radius: var(--radius-md);
+  padding: 1.35rem 1.4rem;
+}
+
+.receipt-kicker {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f6dc8d;
 }
 
 .receipt-title {
   font-size: 1.55rem;
   font-weight: 800;
-  color: var(--success-text);
+  color: #ffffff;
 }
 
 .receipt-subtitle {
-  color: var(--text-main);
+  color: #dce7f5;
+  font-size: 0.96rem;
+}
+
+.receipt-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.25rem 0.1rem;
+}
+
+.receipt-issued-text {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.receipt-actions {
+  justify-content: center;
+  gap: 0.85rem;
 }
 
 .folio-highlight-box {
@@ -1119,12 +1137,13 @@ textarea:focus-visible,
 
 .folio-number {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: clamp(1.85rem, 4.5vw, 2.85rem);
+  font-size: clamp(1.35rem, 5.2vw, 2.55rem);
   font-weight: 900;
   letter-spacing: 0.08em;
   color: var(--unam-blue-dark);
   line-height: 1.15;
-  word-break: break-all;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .copy-feedback {
@@ -1264,23 +1283,6 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
-.admin-footer-link {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.86rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-decoration: none;
-  padding: 0.45rem 0.75rem;
-  border-radius: 8px;
-}
-
-.admin-footer-link:hover {
-  color: var(--unam-blue);
-  background-color: var(--surface-subtle);
-  text-decoration: underline;
-}
-
 /* -----------------------------------------------------------------------------
    13. MODO DE ALTO CONTRASTE (html.high-contrast)
    Máxima legibilidad: negro puro, blanco puro, bordes gruesos y amarillo vivo.
@@ -1394,12 +1396,6 @@ html.high-contrast .a11y-btn[aria-pressed="true"] {
    14. DISEÑO RESPONSIVO (TELÉFONOS, TABLETAS Y PANTALLAS GRANDES)
    Garantiza cero desbordamiento horizontal incluso con letra A+ / A++ en móvil.
    ----------------------------------------------------------------------------- */
-.folio-number {
-  font-size: clamp(1.35rem, 5.2vw, 2.3rem);
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
 .header-phone-link,
 .header-address-text,
 .summary-value {
@@ -1487,10 +1483,11 @@ html.high-contrast .a11y-btn[aria-pressed="true"] {
     gap: 0.2rem;
   }
 
-  .receipt-banner {
+  .receipt-official-header {
     flex-direction: column;
     text-align: center;
     align-items: center;
+    padding: 1.1rem;
   }
 
   .step-actions {
@@ -1640,15 +1637,22 @@ html.high-contrast .a11y-btn[aria-pressed="true"] {
     break-inside: avoid;
   }
 
-  .receipt-banner {
-    background: #ffffff !important;
-    border: 2px solid #000000 !important;
-  }
-
-  .receipt-check-circle {
-    border: 2px solid #000000 !important;
+  .receipt-official-header {
     background: #ffffff !important;
     color: #000000 !important;
+    border: 2px solid #002b5c !important;
+    border-bottom: 4px solid #c59b27 !important;
+  }
+
+  .receipt-kicker,
+  .receipt-title,
+  .receipt-subtitle {
+    color: #000000 !important;
+  }
+
+  .receipt-brand-emblem {
+    border: 2px solid #002b5c !important;
+    background: #ffffff !important;
   }
 
   .folio-number {

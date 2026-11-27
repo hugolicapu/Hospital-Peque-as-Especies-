@@ -22,6 +22,10 @@ import {
   getLocalIsoDate,
   STATUS_META,
 } from '../shared/api.js';
+import {
+  downloadReceiptPng,
+  formatIssuedTimestamp,
+} from './receipt.js';
 
 /** Íconos orientativos para cada tipo de pequeña especie atendida. */
 const SPECIES_ICONS = Object.freeze({
@@ -149,11 +153,15 @@ export function initWizard({ announce, onRetryConfig }) {
 
   // Pantalla de éxito / Comprobante
   const receiptFolioEl = document.getElementById('receipt-folio');
+  const receiptStatusPillEl = document.getElementById('receipt-status-pill');
+  const receiptIssuedAtEl = document.getElementById('receipt-issued-at');
   const receiptDetailsEl = document.getElementById('receipt-details');
   const receiptArrivalNoteEl = document.getElementById('receipt-arrival-note');
   const receiptHospitalContactEl = document.getElementById('receipt-hospital-contact');
+  const receiptDownloadFeedback = document.getElementById('receipt-download-feedback');
   const btnCopyFolio = document.getElementById('btn-copy-folio');
   const copyFolioFeedback = document.getElementById('copy-folio-feedback');
+  const btnDownloadReceipt = document.getElementById('btn-download-receipt');
   const btnPrintReceipt = document.getElementById('btn-print-receipt');
   const btnBookAnother = document.getElementById('btn-book-another');
 
@@ -290,7 +298,7 @@ export function initWizard({ announce, onRetryConfig }) {
 
     services.forEach((service) => {
       const isSelected = state.selectedService && state.selectedService.id === service.id;
-      const duration = service.durationMinutes ?? service.duration_minutes ?? 30;
+      const duration = service.durationMinutes ?? service.duration_minutes ?? 60;
       const iconClass = service.icon || 'bi-heart-pulse-fill';
 
       const cardBtn = createEl(
@@ -574,13 +582,18 @@ export function initWizard({ announce, onRetryConfig }) {
       const isAvailable = Boolean(slot.isAvailable);
       const isSelected = isAvailable && state.selectedTime === slot.time;
       const availableSpots = Number(slot.available ?? 0);
+      const totalCapacity = Number(slot.capacity ?? 1);
 
-      let spotsLabel = 'Sin cupo';
+      let spotsLabel = 'Ocupado';
       if (isAvailable) {
-        spotsLabel =
-          availableSpots === 1 ? '1 lugar disponible' : `${availableSpots} lugares disponibles`;
+        if (totalCapacity === 1) {
+          spotsLabel = 'Disponible';
+        } else {
+          spotsLabel =
+            availableSpots === 1 ? '1 lugar disponible' : `${availableSpots} lugares disponibles`;
+        }
       } else if (slot.reason) {
-        spotsLabel = slot.reason;
+        spotsLabel = slot.reason === 'Cupo lleno' && totalCapacity === 1 ? 'Ocupado' : slot.reason;
       }
 
       const slotBtn = createEl(
@@ -963,11 +976,25 @@ export function initWizard({ announce, onRetryConfig }) {
     const petSpecies =
       appointment.petSpecies || appointment.pet_species || state.formValues.petSpecies;
     const statusKey = appointment.status || 'pendiente';
-    const statusMeta = STATUS_META[statusKey] || { label: statusKey };
+    const statusMeta = STATUS_META[statusKey] || {
+      label: statusKey,
+      badgeClass: 'text-bg-warning',
+    };
 
     if (receiptFolioEl) {
       receiptFolioEl.textContent = folio;
     }
+
+    if (receiptStatusPillEl) {
+      receiptStatusPillEl.className = `badge status-pill ${statusMeta.badgeClass}`;
+      receiptStatusPillEl.textContent = statusMeta.label;
+    }
+
+    if (receiptIssuedAtEl) {
+      receiptIssuedAtEl.textContent = `Emitido: ${formatIssuedTimestamp()}`;
+    }
+
+    showAlert(receiptDownloadFeedback, '');
 
     if (copyFolioFeedback) {
       copyFolioFeedback.classList.add('d-none');
@@ -975,15 +1002,22 @@ export function initWizard({ announce, onRetryConfig }) {
     }
 
     if (receiptDetailsEl) {
-      receiptDetailsEl.replaceChildren(
+      const detailRows = [
         createSummaryRow('Servicio', serviceName),
         createSummaryRow('Día de la cita', formatDateSpanish(dateVal)),
-        createSummaryRow('Hora de la cita', formatTime12h(timeVal)),
+        createSummaryRow('Hora de la cita', `${formatTime12h(timeVal)} (${timeVal} hrs)`),
         createSummaryRow('Dueño o tutor', ownerName),
         createSummaryRow('Teléfono registrado', ownerPhone),
         createSummaryRow('Mascota', `${petName} (${petSpecies})`),
-        createSummaryRow('Estado de la cita', statusMeta.label)
-      );
+      ];
+      if (state.formValues.petAge) {
+        detailRows.push(createSummaryRow('Edad aproximada', state.formValues.petAge));
+      }
+      if (state.formValues.reasonNotes) {
+        detailRows.push(createSummaryRow('Motivo de la consulta', state.formValues.reasonNotes));
+      }
+      detailRows.push(createSummaryRow('Estado de la cita', statusMeta.label));
+      receiptDetailsEl.replaceChildren(...detailRows);
     }
 
     const arrivalMinutes = Number(state.config?.hospital?.arrivalMinutes ?? 15);
@@ -1175,6 +1209,37 @@ export function initWizard({ announce, onRetryConfig }) {
           copyFolioFeedback.textContent = 'Puede anotarlo o imprimir esta página.';
           copyFolioFeedback.classList.remove('d-none');
         }
+      }
+    });
+  }
+
+  if (btnDownloadReceipt) {
+    btnDownloadReceipt.addEventListener('click', async () => {
+      if (!state.createdAppointment) return;
+      btnDownloadReceipt.disabled = true;
+      try {
+        const format = await downloadReceiptPng(
+          {
+            ...state.createdAppointment,
+            serviceName:
+              state.createdAppointment.serviceName || state.selectedService?.name || '',
+            ownerName: state.createdAppointment.ownerName || state.formValues.ownerName,
+            ownerPhone: state.createdAppointment.ownerPhone || state.formValues.ownerPhone,
+            petName: state.createdAppointment.petName || state.formValues.petName,
+            petSpecies: state.createdAppointment.petSpecies || state.formValues.petSpecies,
+            petAge: state.createdAppointment.petAge || state.formValues.petAge,
+            reasonNotes: state.createdAppointment.reasonNotes || state.formValues.reasonNotes,
+          },
+          state.config?.hospital || {}
+        );
+        const msg =
+          format === 'png'
+            ? '¡Comprobante guardado en formato imagen (PNG)! Revise su carpeta de Descargas o Galería.'
+            : '¡Comprobante guardado! Revise su carpeta de Descargas.';
+        showAlert(receiptDownloadFeedback, msg, 'success');
+        announce(msg);
+      } finally {
+        btnDownloadReceipt.disabled = false;
       }
     });
   }

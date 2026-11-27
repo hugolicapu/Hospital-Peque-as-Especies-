@@ -24,7 +24,7 @@ async function resetDatabase() {
       await tx.run('DELETE FROM appointments');
       await tx.run('DELETE FROM blocked_dates');
       await tx.run('DELETE FROM audit_logs');
-      await tx.run('UPDATE services SET active = 1');
+      await tx.run('UPDATE services SET active = 1, duration_minutes = 60');
 
       for (const rule of DEFAULT_SCHEDULE_RULES) {
         await tx.run(
